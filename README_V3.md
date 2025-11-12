@@ -4,16 +4,21 @@
 
 ### 📋 Resumo das Mudanças
 
-A **Versão 3.0** implementa uma mudança estratégica fundamental no fluxo de trabalho:
+A **Versão 3.0** implementa duas mudanças estratégicas fundamentais:
+
+1. **Foco exclusivo: INCRA vs. PROJETO** (Memorial Descritivo removido)
+2. **Nova abordagem de extração:** PDF → Excel → Comparação
 
 **ANTES (V1/V2):**
 ```
 PDF → OCR em tempo real (Gemini) → Comparação
+Documentos: INCRA + Memorial + Projeto
 ```
 
 **AGORA (V3):**
 ```
 PDF → Extração para Excel (Gemini) → Comparação de dados estruturados
+Documentos: INCRA + PROJETO apenas
 ```
 
 ### ✅ Benefícios da Nova Abordagem

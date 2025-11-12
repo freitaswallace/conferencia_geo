@@ -51,21 +51,17 @@ class VerificadorGeorreferenciamento:
         
         # Variáveis para armazenar caminhos dos arquivos
         self.incra_path = tk.StringVar()
-        self.memorial_path = tk.StringVar()
         self.projeto_path = tk.StringVar()
         self.api_key = tk.StringVar()
 
-        # Variáveis para armazenar imagens processadas
+        # Variáveis para armazenar imagens processadas (para comparação visual)
         self.incra_images: List[Image.Image] = []
-        self.memorial_images: List[Image.Image] = []
         self.projeto_images: List[Image.Image] = []
 
         # Variáveis para armazenar dados extraídos (nova funcionalidade v3)
         self.incra_excel_path: Optional[str] = None
-        self.memorial_excel_path: Optional[str] = None
         self.projeto_excel_path: Optional[str] = None
         self.incra_data: Optional[Dict] = None
-        self.memorial_data: Optional[Dict] = None
         self.projeto_data: Optional[Dict] = None
         
         self._criar_interface()
@@ -98,85 +94,58 @@ class VerificadorGeorreferenciamento:
         
         # INCRA
         self._criar_linha_arquivo(main_frame, 3, "INCRA:", self.incra_path)
-        
-        # Memorial Descritivo
-        self._criar_linha_arquivo(main_frame, 4, "Memorial Descritivo:", self.memorial_path)
-        
+
         # Projeto/Planta
-        self._criar_linha_arquivo(main_frame, 5, "Projeto/Planta:", self.projeto_path)
+        self._criar_linha_arquivo(main_frame, 4, "Projeto/Planta:", self.projeto_path)
         
         # ===== SEÇÃO: BOTÕES DE AÇÃO =====
         ttk.Separator(main_frame, orient='horizontal').grid(
-            row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
-        
+            row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=7, column=0, columnspan=2, pady=15)
-        
+        button_frame.grid(row=6, column=0, columnspan=2, pady=15)
+
         # Estilo para botões maiores
         style = ttk.Style()
         style.configure('Large.TButton', font=('Arial', 12, 'bold'), padding=10)
-        
-        # Linha 1 de botões: Comparações com IA
-        botoes_ia_frame = ttk.Frame(button_frame)
-        botoes_ia_frame.pack(pady=5)
-        
-        self.btn_comparar_parcial = ttk.Button(
-            botoes_ia_frame, 
-            text="⚖️  INCRA vs. Memorial",
-            command=self._comparar_parcial,
-            style='Large.TButton',
-            width=25
-        )
-        self.btn_comparar_parcial.pack(side=tk.LEFT, padx=5)
-        
-        self.btn_comparar_projeto = ttk.Button(
-            botoes_ia_frame,
-            text="📐  INCRA vs. Projeto",
+
+        # Botão único: INCRA vs. Projeto
+        self.btn_comparar = ttk.Button(
+            button_frame,
+            text="📐  COMPARAR: INCRA vs. Projeto",
             command=self._comparar_projeto,
             style='Large.TButton',
-            width=25
+            width=40
         )
-        self.btn_comparar_projeto.pack(side=tk.LEFT, padx=5)
-        
-        self.btn_comparar_todos = ttk.Button(
-            botoes_ia_frame,
-            text="🔍  Comparar TODOS",
-            command=self._comparar_todos,
-            style='Large.TButton',
-            width=25
-        )
-        self.btn_comparar_todos.pack(side=tk.LEFT, padx=5)
-        
-        # Linha 2: Comparação Manual
-        botoes_manual_frame = ttk.Frame(button_frame)
-        botoes_manual_frame.pack(pady=5)
-        
+        self.btn_comparar.pack(pady=5)
+
+        # Comparação Visual Manual
         self.btn_comparacao_manual = ttk.Button(
-            botoes_manual_frame,
+            button_frame,
             text="👁️  Comparação Visual Manual",
             command=self._abrir_comparacao_manual,
             style='Large.TButton',
             width=40
         )
-        self.btn_comparacao_manual.pack()
+        self.btn_comparacao_manual.pack(pady=5)
         
         # ===== SEÇÃO: ÁREA DE RESULTADOS =====
         ttk.Separator(main_frame, orient='horizontal').grid(
-            row=8, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+            row=7, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
         
-        ttk.Label(main_frame, text="📋 Relatório de Comparação:", 
-                 font=('Arial', 14, 'bold')).grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
-        
+        ttk.Label(main_frame, text="📋 Relatório de Comparação:",
+                 font=('Arial', 14, 'bold')).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+
         # Frame para área de texto com barra de rolagem
         text_frame = ttk.Frame(main_frame)
-        text_frame.grid(row=10, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        text_frame.grid(row=9, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
-        
+
         # Área de texto com scroll e fonte maior
         self.resultado_text = scrolledtext.ScrolledText(
-            text_frame, 
-            width=85, 
+            text_frame,
+            width=85,
             height=22,
             wrap=tk.WORD,
             font=('Consolas', 11),
@@ -184,10 +153,10 @@ class VerificadorGeorreferenciamento:
             fg='#000000'
         )
         self.resultado_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
         # Botão para salvar HTML
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=11, column=0, columnspan=2, pady=(5, 0))
+        btn_frame.grid(row=10, column=0, columnspan=2, pady=(5, 0))
         
         self.btn_salvar_html = ttk.Button(
             btn_frame,
@@ -198,12 +167,12 @@ class VerificadorGeorreferenciamento:
         self.btn_salvar_html.pack(side=tk.LEFT, padx=5)
         
         # Configurar expansão da área de texto
-        main_frame.rowconfigure(10, weight=1)
-        
+        main_frame.rowconfigure(9, weight=1)
+
         # Barra de status com fonte maior
-        self.status_label = ttk.Label(main_frame, text="✅ Sistema Pronto para Uso", 
+        self.status_label = ttk.Label(main_frame, text="✅ Sistema Pronto para Uso",
                                       relief=tk.SUNKEN, anchor=tk.W, font=('Arial', 11))
-        self.status_label.grid(row=12, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.status_label.grid(row=11, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # Variável para armazenar o HTML do último relatório
         self.ultimo_relatorio_html = ""
@@ -282,24 +251,20 @@ class VerificadorGeorreferenciamento:
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao abrir comparação manual:\n{str(e)}")
     
-    def _validar_entrada(self, incluir_projeto=False, incluir_memorial=True) -> bool:
+    def _validar_entrada(self) -> bool:
         """Valida se todos os campos necessários foram preenchidos."""
         if not self.api_key.get().strip():
             messagebox.showerror("Erro", "Por favor, insira a API Key do Gemini.")
             return False
-            
+
         if not self.incra_path.get():
             messagebox.showerror("Erro", "Por favor, selecione o arquivo INCRA.")
             return False
-            
-        if incluir_memorial and not self.memorial_path.get():
-            messagebox.showerror("Erro", "Por favor, selecione o arquivo Memorial Descritivo.")
-            return False
-            
-        if incluir_projeto and not self.projeto_path.get():
+
+        if not self.projeto_path.get():
             messagebox.showerror("Erro", "Por favor, selecione o arquivo Projeto/Planta.")
             return False
-            
+
         return True
         
     def _atualizar_status(self, mensagem: str):
@@ -309,13 +274,11 @@ class VerificadorGeorreferenciamento:
         
     def _desabilitar_botoes(self):
         """Desabilita os botões durante o processamento."""
-        self.btn_comparar_parcial.config(state='disabled')
-        self.btn_comparar_todos.config(state='disabled')
-        
+        self.btn_comparar.config(state='disabled')
+
     def _habilitar_botoes(self):
         """Reabilita os botões após o processamento."""
-        self.btn_comparar_parcial.config(state='normal')
-        self.btn_comparar_todos.config(state='normal')
+        self.btn_comparar.config(state='normal')
 
     # ========== NOVAS FUNÇÕES V3: EXTRAÇÃO PARA EXCEL ==========
 
@@ -1449,121 +1412,47 @@ class VerificadorGeorreferenciamento:
 
     def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
         """
-        Constrói relatório HTML comparando dados estruturados (nova versão V3).
+        Constrói relatório comparando dados estruturados (nova versão V3).
         Compara dados extraídos dos Excel em vez de fazer OCR em tempo real.
         """
-        html = []
+        linhas = []
 
         # Cabeçalho
-        html.append("# 📋 RELATÓRIO DE CONFERÊNCIA DE GEORREFERENCIAMENTO\n")
-        html.append("**Versão 3.0 - Comparação de Dados Estruturados (Excel)**\n\n")
-        html.append("---\n\n")
-
-        # Seção INCRA vs Memorial
-        if incluir_memorial and self.memorial_data:
-            html.append("## ⚖️ COMPARAÇÃO: INCRA vs. MEMORIAL DESCRITIVO\n\n")
-            html.append("### 📊 TABELA: VÉRTICE (Código, Longitude, Latitude, Altitude)\n\n")
-
-            # Criar tabela comparativa
-            html.append("| Vértice | INCRA | MEMORIAL | Status |\n")
-            html.append("|---------|--------|----------|--------|\n")
-
-            # Comparar linha por linha
-            max_rows = max(len(self.incra_data['data']), len(self.memorial_data['data']))
-
-            for i in range(max_rows):
-                incra_row = self.incra_data['data'][i] if i < len(self.incra_data['data']) else None
-                memorial_row = self.memorial_data['data'][i] if i < len(self.memorial_data['data']) else None
-
-                if incra_row and memorial_row:
-                    # Comparar código
-                    codigo_incra = incra_row[0] if len(incra_row) > 0 else ""
-                    codigo_memorial = memorial_row[0] if len(memorial_row) > 0 else ""
-
-                    # Comparar coordenadas
-                    long_incra = incra_row[1] if len(incra_row) > 1 else ""
-                    long_memorial = memorial_row[1] if len(memorial_row) > 1 else ""
-
-                    lat_incra = incra_row[2] if len(incra_row) > 2 else ""
-                    lat_memorial = memorial_row[2] if len(memorial_row) > 2 else ""
-
-                    alt_incra = incra_row[3] if len(incra_row) > 3 else ""
-                    alt_memorial = memorial_row[3] if len(memorial_row) > 3 else ""
-
-                    # Verificar se são idênticos
-                    if (codigo_incra == codigo_memorial and
-                        long_incra == long_memorial and
-                        lat_incra == lat_memorial and
-                        alt_incra == alt_memorial):
-                        status = "✅ OK"
-                    else:
-                        status = "❌ DIFERENTE"
-
-                    html.append(f"| **Código** | {codigo_incra} | {codigo_memorial} | {status} |\n")
-                    html.append(f"| **Longitude** | {long_incra} | {long_memorial} | {status} |\n")
-                    html.append(f"| **Latitude** | {lat_incra} | {lat_memorial} | {status} |\n")
-                    html.append(f"| **Altitude** | {alt_incra} | {alt_memorial} | {status} |\n")
-                    html.append("| | | | |\n")
-
-                elif incra_row and not memorial_row:
-                    html.append(f"| Linha {i+1} | {incra_row[0]} | **AUSENTE** | ❌ FALTA NO MEMORIAL |\n")
-                elif not incra_row and memorial_row:
-                    html.append(f"| Linha {i+1} | **AUSENTE** | {memorial_row[0]} | ❌ EXTRA NO MEMORIAL |\n")
-
-            html.append("\n### 📐 TABELA: SEGMENTO VANTE (Código, Azimute, Distância, Confrontações)\n\n")
-            html.append("| Segmento | INCRA | MEMORIAL | Status |\n")
-            html.append("|----------|--------|----------|--------|\n")
-
-            for i in range(max_rows):
-                incra_row = self.incra_data['data'][i] if i < len(self.incra_data['data']) else None
-                memorial_row = self.memorial_data['data'][i] if i < len(self.memorial_data['data']) else None
-
-                if incra_row and memorial_row:
-                    # Segmento Vante (colunas 4-7)
-                    cod_seg_incra = incra_row[4] if len(incra_row) > 4 else ""
-                    cod_seg_memorial = memorial_row[4] if len(memorial_row) > 4 else ""
-
-                    azim_incra = incra_row[5] if len(incra_row) > 5 else ""
-                    azim_memorial = memorial_row[5] if len(memorial_row) > 5 else ""
-
-                    dist_incra = incra_row[6] if len(incra_row) > 6 else ""
-                    dist_memorial = memorial_row[6] if len(memorial_row) > 6 else ""
-
-                    conf_incra = incra_row[7] if len(incra_row) > 7 else ""
-                    conf_memorial = memorial_row[7] if len(memorial_row) > 7 else ""
-
-                    if (cod_seg_incra == cod_seg_memorial and
-                        azim_incra == azim_memorial and
-                        dist_incra == dist_memorial and
-                        conf_incra == conf_memorial):
-                        status = "✅ OK"
-                    else:
-                        status = "❌ DIFERENTE"
-
-                    html.append(f"| **Código** | {cod_seg_incra} | {cod_seg_memorial} | {status} |\n")
-                    html.append(f"| **Azimute** | {azim_incra} | {azim_memorial} | {status} |\n")
-                    html.append(f"| **Distância** | {dist_incra} | {dist_memorial} | {status} |\n")
-                    html.append(f"| **Confrontações** | {conf_incra} | {conf_memorial} | {status} |\n")
-                    html.append("| | | | |\n")
-
-            html.append("\n---\n\n")
+        linhas.append("=" * 80)
+        linhas.append("📋 RELATÓRIO DE CONFERÊNCIA DE GEORREFERENCIAMENTO")
+        linhas.append("Versão 3.0 - Comparação de Dados Estruturados (Excel)")
+        linhas.append("=" * 80)
+        linhas.append("")
 
         # Seção INCRA vs Projeto
         if incluir_projeto and self.projeto_data:
-            html.append("## 📐 COMPARAÇÃO: INCRA vs. PROJETO/PLANTA\n\n")
-            html.append("### 📊 TABELA: VÉRTICE (Código, Longitude, Latitude, Altitude)\n\n")
+            linhas.append("-" * 80)
+            linhas.append("📐 COMPARAÇÃO: INCRA vs. PROJETO/PLANTA")
+            linhas.append("-" * 80)
+            linhas.append("")
 
-            # Criar tabela comparativa
-            html.append("| Vértice | INCRA | PROJETO | Status |\n")
-            html.append("|---------|--------|---------|--------|\n")
+            # Estatísticas
+            num_vertices_incra = len(self.incra_data['data'])
+            num_vertices_projeto = len(self.projeto_data['data'])
+            linhas.append(f"Total de vértices INCRA: {num_vertices_incra}")
+            linhas.append(f"Total de vértices PROJETO: {num_vertices_projeto}")
+            linhas.append("")
 
-            max_rows = max(len(self.incra_data['data']), len(self.projeto_data['data']))
+            # Comparar linha por linha
+            max_rows = max(num_vertices_incra, num_vertices_projeto)
+
+            linhas.append("COMPARAÇÃO DETALHADA:")
+            linhas.append("")
+
+            diferencas = 0
+            identicos = 0
 
             for i in range(max_rows):
-                incra_row = self.incra_data['data'][i] if i < len(self.incra_data['data']) else None
-                projeto_row = self.projeto_data['data'][i] if i < len(self.projeto_data['data']) else None
+                incra_row = self.incra_data['data'][i] if i < num_vertices_incra else None
+                projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
 
                 if incra_row and projeto_row:
+                    # Extrair dados
                     codigo_incra = incra_row[0] if len(incra_row) > 0 else ""
                     codigo_projeto = projeto_row[0] if len(projeto_row) > 0 else ""
 
@@ -1576,40 +1465,66 @@ class VerificadorGeorreferenciamento:
                     alt_incra = incra_row[3] if len(incra_row) > 3 else ""
                     alt_projeto = projeto_row[3] if len(projeto_row) > 3 else ""
 
-                    if (codigo_incra == codigo_projeto and
-                        long_incra == long_projeto and
-                        lat_incra == lat_projeto and
-                        alt_incra == alt_projeto):
-                        status = "✅ OK"
+                    # Verificar se são idênticos
+                    identico = (codigo_incra == codigo_projeto and
+                               long_incra == long_projeto and
+                               lat_incra == lat_projeto and
+                               alt_incra == alt_projeto)
+
+                    if identico:
+                        status = "✅ IDÊNTICO"
+                        identicos += 1
                     else:
                         status = "❌ DIFERENTE"
+                        diferencas += 1
 
-                    html.append(f"| **Código** | {codigo_incra} | {codigo_projeto} | {status} |\n")
-                    html.append(f"| **Longitude** | {long_incra} | {long_projeto} | {status} |\n")
-                    html.append(f"| **Latitude** | {lat_incra} | {lat_projeto} | {status} |\n")
-                    html.append(f"| **Altitude** | {alt_incra} | {alt_projeto} | {status} |\n")
-                    html.append("| | | | |\n")
+                    linhas.append(f"Vértice {i+1}: {status}")
+                    linhas.append(f"  Código    | INCRA: {codigo_incra:20} | PROJETO: {codigo_projeto}")
+                    linhas.append(f"  Longitude | INCRA: {long_incra:20} | PROJETO: {long_projeto}")
+                    linhas.append(f"  Latitude  | INCRA: {lat_incra:20} | PROJETO: {lat_projeto}")
+                    linhas.append(f"  Altitude  | INCRA: {alt_incra:20} | PROJETO: {alt_projeto}")
+                    linhas.append("")
 
                 elif incra_row and not projeto_row:
-                    html.append(f"| Linha {i+1} | {incra_row[0]} | **AUSENTE** | ❌ FALTA NO PROJETO |\n")
+                    diferencas += 1
+                    linhas.append(f"Vértice {i+1}: ❌ AUSENTE NO PROJETO")
+                    linhas.append(f"  Código INCRA: {incra_row[0]}")
+                    linhas.append("")
+
                 elif not incra_row and projeto_row:
-                    html.append(f"| Linha {i+1} | **AUSENTE** | {projeto_row[0]} | ❌ EXTRA NO PROJETO |\n")
+                    diferencas += 1
+                    linhas.append(f"Vértice {i+1}: ❌ EXTRA NO PROJETO (não existe no INCRA)")
+                    linhas.append(f"  Código PROJETO: {projeto_row[0]}")
+                    linhas.append("")
 
-            html.append("\n---\n\n")
+            # Resumo
+            linhas.append("-" * 80)
+            linhas.append("📊 RESUMO DA COMPARAÇÃO")
+            linhas.append("-" * 80)
+            linhas.append(f"Total de vértices analisados: {max_rows}")
+            linhas.append(f"✅ Vértices idênticos: {identicos}")
+            linhas.append(f"❌ Vértices diferentes: {diferencas}")
+            linhas.append("")
 
-        # Conclusão
-        html.append("## 📊 CONCLUSÃO\n\n")
-        html.append("**Método:** Comparação de dados estruturados extraídos para Excel\n\n")
-        html.append("**Benefícios:**\n")
-        html.append("- ✅ Sem erros de OCR em tempo real\n")
-        html.append("- ✅ Dados estruturados e verificáveis\n")
-        html.append("- ✅ Excel files disponíveis para auditoria\n\n")
-        html.append("---\n\n")
-        html.append("*Relatório gerado automaticamente - Versão 3.0*\n")
+            if diferencas == 0:
+                linhas.append("🎉 RESULTADO: TODOS OS VÉRTICES ESTÃO IDÊNTICOS!")
+            else:
+                linhas.append("⚠️  RESULTADO: EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS")
+                linhas.append("    Por favor, revise os vértices marcados como DIFERENTE")
 
-        return "".join(html)
+        linhas.append("")
+        linhas.append("=" * 80)
+        linhas.append("INFORMAÇÕES DO PROCESSO:")
+        linhas.append(f"- Arquivos Excel gerados para auditoria")
+        linhas.append(f"- INCRA: {self.incra_excel_path}")
+        linhas.append(f"- PROJETO: {self.projeto_excel_path}")
+        linhas.append("=" * 80)
+        linhas.append("")
+        linhas.append("Relatório gerado automaticamente - Versão 3.0")
 
-    def _executar_analise_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = True):
+        return "\n".join(linhas)
+
+    def _executar_analise_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = False):
         """
         Executa a análise completa usando extração para Excel + comparação.
         Nova versão V3: Extrai PDFs para Excel primeiro, depois compara dados estruturados.
@@ -1624,7 +1539,7 @@ class VerificadorGeorreferenciamento:
 
             # ===== ETAPA 1: EXTRAIR INCRA PARA EXCEL =====
             self._atualizar_status("Extraindo tabela do INCRA para Excel...")
-            self.resultado_text.insert(tk.END, "🔄 [1/3] Extraindo INCRA para Excel...\n")
+            self.resultado_text.insert(tk.END, "🔄 [1/2] Extraindo INCRA para Excel...\n")
             self.root.update_idletasks()
 
             self.incra_excel_path, self.incra_data = self._extrair_pdf_para_excel(
@@ -1636,44 +1551,29 @@ class VerificadorGeorreferenciamento:
                 f"✅ INCRA extraído: {len(self.incra_data['data'])} vértices → {self.incra_excel_path}\n\n"
             )
 
-            # ===== ETAPA 2: EXTRAIR MEMORIAL OU PROJETO PARA EXCEL =====
-            if incluir_memorial:
-                self._atualizar_status("Extraindo tabela do Memorial Descritivo para Excel...")
-                self.resultado_text.insert(tk.END, "🔄 [2/3] Extraindo Memorial para Excel...\n")
-                self.root.update_idletasks()
+            # ===== ETAPA 2: EXTRAIR PROJETO PARA EXCEL =====
+            self._atualizar_status("Extraindo tabela do Projeto para Excel...")
+            self.resultado_text.insert(tk.END, "🔄 [2/2] Extraindo Projeto para Excel...\n")
+            self.root.update_idletasks()
 
-                self.memorial_excel_path, self.memorial_data = self._extrair_pdf_para_excel(
-                    self.memorial_path.get(),
-                    tipo="normal"
-                )
-                self.resultado_text.insert(
-                    tk.END,
-                    f"✅ Memorial extraído: {len(self.memorial_data['data'])} vértices → {self.memorial_excel_path}\n\n"
-                )
-
-            if incluir_projeto:
-                self._atualizar_status("Extraindo tabela do Projeto para Excel...")
-                self.resultado_text.insert(tk.END, "🔄 [2/3] Extraindo Projeto para Excel...\n")
-                self.root.update_idletasks()
-
-                self.projeto_excel_path, self.projeto_data = self._extrair_pdf_para_excel(
-                    self.projeto_path.get(),
-                    tipo="normal"
-                )
-                self.resultado_text.insert(
-                    tk.END,
-                    f"✅ Projeto extraído: {len(self.projeto_data['data'])} vértices → {self.projeto_excel_path}\n\n"
-                )
+            self.projeto_excel_path, self.projeto_data = self._extrair_pdf_para_excel(
+                self.projeto_path.get(),
+                tipo="normal"
+            )
+            self.resultado_text.insert(
+                tk.END,
+                f"✅ Projeto extraído: {len(self.projeto_data['data'])} vértices → {self.projeto_excel_path}\n\n"
+            )
 
             self.resultado_text.insert(tk.END, "="*80 + "\n\n")
 
             # ===== ETAPA 3: COMPARAR DADOS ESTRUTURADOS =====
             self._atualizar_status("Comparando dados estruturados...")
-            self.resultado_text.insert(tk.END, "🔄 [3/3] Comparando dados estruturados...\n\n")
+            self.resultado_text.insert(tk.END, "🔄 Comparando dados estruturados...\n\n")
             self.root.update_idletasks()
 
             # Construir relatório de comparação
-            relatorio = self._construir_relatorio_comparacao(incluir_projeto, incluir_memorial)
+            relatorio = self._construir_relatorio_comparacao(True, False)
 
             # Exibir resultado
             self.resultado_text.insert(tk.END, relatorio)
@@ -1702,40 +1602,16 @@ class VerificadorGeorreferenciamento:
 
         finally:
             self._habilitar_botoes()
-            
-    def _comparar_parcial(self):
-        """Compara apenas INCRA vs. Memorial."""
-        if not self._validar_entrada(incluir_projeto=False, incluir_memorial=True):
-            return
-            
-        self._desabilitar_botoes()
-        
-        # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini, args=(False, True))
-        thread.daemon = True
-        thread.start()
-    
+
     def _comparar_projeto(self):
-        """Compara apenas INCRA vs. Projeto."""
-        if not self._validar_entrada(incluir_projeto=True, incluir_memorial=False):
+        """Compara INCRA vs. Projeto."""
+        if not self._validar_entrada():
             return
-            
+
         self._desabilitar_botoes()
-        
+
         # Executar em thread separada para não travar a GUI
         thread = threading.Thread(target=self._executar_analise_gemini, args=(True, False))
-        thread.daemon = True
-        thread.start()
-        
-    def _comparar_todos(self):
-        """Compara INCRA + Memorial + Projeto."""
-        if not self._validar_entrada(incluir_projeto=True, incluir_memorial=True):
-            return
-            
-        self._desabilitar_botoes()
-        
-        # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini, args=(True, True))
         thread.daemon = True
         thread.start()
 

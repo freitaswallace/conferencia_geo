@@ -1470,6 +1470,7 @@ class VerificadorGeorreferenciamento:
         """
         Limpa qualquer valor convertendo para string e removendo espaços em branco.
         Remove também caracteres invisíveis que podem causar diferenças falsas.
+        Converte pontos decimais em vírgulas para padronização numérica brasileira.
         """
         if valor is None:
             return ""
@@ -1480,6 +1481,9 @@ class VerificadorGeorreferenciamento:
         # Remover espaços duplos internos
         while "  " in valor_limpo:
             valor_limpo = valor_limpo.replace("  ", " ")
+
+        # Converter ponto decimal para vírgula (padrão brasileiro)
+        valor_limpo = valor_limpo.replace(".", ",")
 
         return valor_limpo
 

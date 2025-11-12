@@ -41,13 +41,11 @@ class VerificadorGeorreferenciamento:
         
         # Variáveis para armazenar caminhos dos arquivos
         self.incra_path = tk.StringVar()
-        self.memorial_path = tk.StringVar()
         self.projeto_path = tk.StringVar()
         self.api_key = tk.StringVar()
-        
+
         # Variáveis para armazenar imagens processadas
         self.incra_images: List[Image.Image] = []
-        self.memorial_images: List[Image.Image] = []
         self.projeto_images: List[Image.Image] = []
         
         self._criar_interface()
@@ -80,12 +78,9 @@ class VerificadorGeorreferenciamento:
         
         # INCRA
         self._criar_linha_arquivo(main_frame, 3, "INCRA:", self.incra_path)
-        
-        # Memorial Descritivo
-        self._criar_linha_arquivo(main_frame, 4, "Memorial Descritivo:", self.memorial_path)
-        
+
         # Projeto/Planta
-        self._criar_linha_arquivo(main_frame, 5, "Projeto/Planta:", self.projeto_path)
+        self._criar_linha_arquivo(main_frame, 4, "Projeto/Planta:", self.projeto_path)
         
         # ===== SEÇÃO: BOTÕES DE AÇÃO =====
         ttk.Separator(main_frame, orient='horizontal').grid(
@@ -98,38 +93,20 @@ class VerificadorGeorreferenciamento:
         style = ttk.Style()
         style.configure('Large.TButton', font=('Arial', 12, 'bold'), padding=10)
         
-        # Linha 1 de botões: Comparações com IA
+        # Botão de Comparação com IA
         botoes_ia_frame = ttk.Frame(button_frame)
         botoes_ia_frame.pack(pady=5)
-        
-        self.btn_comparar_parcial = ttk.Button(
-            botoes_ia_frame, 
-            text="⚖️  INCRA vs. Memorial",
-            command=self._comparar_parcial,
-            style='Large.TButton',
-            width=25
-        )
-        self.btn_comparar_parcial.pack(side=tk.LEFT, padx=5)
-        
-        self.btn_comparar_projeto = ttk.Button(
+
+        self.btn_comparar = ttk.Button(
             botoes_ia_frame,
-            text="📐  INCRA vs. Projeto",
-            command=self._comparar_projeto,
+            text="🔍  Comparar INCRA vs. Projeto",
+            command=self._comparar_documentos,
             style='Large.TButton',
-            width=25
+            width=35
         )
-        self.btn_comparar_projeto.pack(side=tk.LEFT, padx=5)
-        
-        self.btn_comparar_todos = ttk.Button(
-            botoes_ia_frame,
-            text="🔍  Comparar TODOS",
-            command=self._comparar_todos,
-            style='Large.TButton',
-            width=25
-        )
-        self.btn_comparar_todos.pack(side=tk.LEFT, padx=5)
-        
-        # Linha 2: Comparação Manual
+        self.btn_comparar.pack(pady=5)
+
+        # Botão de Comparação Manual
         botoes_manual_frame = ttk.Frame(button_frame)
         botoes_manual_frame.pack(pady=5)
         
@@ -241,47 +218,42 @@ class VerificadorGeorreferenciamento:
         # Verificar se há documentos carregados
         if not self.incra_path.get():
             messagebox.showwarning(
-                "Aviso", 
-                "Por favor, selecione pelo menos o arquivo INCRA."
+                "Aviso",
+                "Por favor, selecione o arquivo INCRA."
             )
             return
-        
-        if not self.memorial_path.get() and not self.projeto_path.get():
+
+        if not self.projeto_path.get():
             messagebox.showwarning(
                 "Aviso",
-                "Por favor, selecione pelo menos o Memorial ou o Projeto para comparar."
+                "Por favor, selecione o arquivo do Projeto."
             )
             return
-        
+
         # Criar e abrir janela de comparação
         try:
             janela_comparacao = JanelaComparacaoManual(
                 self.root,
                 self.incra_path.get(),
-                self.memorial_path.get() if self.memorial_path.get() else None,
-                self.projeto_path.get() if self.projeto_path.get() else None
+                self.projeto_path.get()
             )
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao abrir comparação manual:\n{str(e)}")
     
-    def _validar_entrada(self, incluir_projeto=False, incluir_memorial=True) -> bool:
+    def _validar_entrada(self) -> bool:
         """Valida se todos os campos necessários foram preenchidos."""
         if not self.api_key.get().strip():
             messagebox.showerror("Erro", "Por favor, insira a API Key do Gemini.")
             return False
-            
+
         if not self.incra_path.get():
             messagebox.showerror("Erro", "Por favor, selecione o arquivo INCRA.")
             return False
-            
-        if incluir_memorial and not self.memorial_path.get():
-            messagebox.showerror("Erro", "Por favor, selecione o arquivo Memorial Descritivo.")
-            return False
-            
-        if incluir_projeto and not self.projeto_path.get():
+
+        if not self.projeto_path.get():
             messagebox.showerror("Erro", "Por favor, selecione o arquivo Projeto/Planta.")
             return False
-            
+
         return True
         
     def _atualizar_status(self, mensagem: str):
@@ -291,13 +263,13 @@ class VerificadorGeorreferenciamento:
         
     def _desabilitar_botoes(self):
         """Desabilita os botões durante o processamento."""
-        self.btn_comparar_parcial.config(state='disabled')
-        self.btn_comparar_todos.config(state='disabled')
-        
+        self.btn_comparar.config(state='disabled')
+        self.btn_comparacao_manual.config(state='disabled')
+
     def _habilitar_botoes(self):
         """Reabilita os botões após o processamento."""
-        self.btn_comparar_parcial.config(state='normal')
-        self.btn_comparar_todos.config(state='normal')
+        self.btn_comparar.config(state='normal')
+        self.btn_comparacao_manual.config(state='normal')
         
     def _carregar_pdf_como_imagens(self, pdf_path: str, rotacionar_90: bool = False) -> List[Image.Image]:
         """
@@ -326,16 +298,12 @@ class VerificadorGeorreferenciamento:
         except Exception as e:
             raise Exception(f"Erro ao processar PDF {Path(pdf_path).name}: {str(e)}")
             
-    def _construir_prompt_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = True) -> List:
+    def _construir_prompt_gemini(self) -> List:
         """
         Constrói o prompt multimodal para a API do Gemini.
-        
-        Args:
-            incluir_projeto: Se True, inclui as imagens do projeto na análise
-            incluir_memorial: Se True, inclui as imagens do memorial na análise
-            
+
         Returns:
-            Lista contendo strings de texto e objetos PIL.Image
+            Lista contendo strings de texto e objetos PIL.Image para comparação INCRA vs Projeto
         """
         prompt = [
             "Você é um assistente ESPECIALISTA em análise de documentos de georreferenciamento de imóveis rurais para cartórios no Brasil.",
@@ -370,32 +338,11 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n**FORMATO DOS DOCUMENTOS:**",
             "\n1. 📋 INCRA: Dados em TABELAS - extraia TODAS as células com precisão",
-            "\n2. 📄 MEMORIAL: Dados em TEXTO CORRIDO - ⚠️ CRÍTICO: LEIA LETRA POR LETRA!",
-            "\n   • O Memorial é um texto em PROSA (parágrafos longos)",
-            "\n   • As informações estão DISPERSAS e MISTURADAS no texto",
-            "\n   • Você DEVE ler com EXTREMA ATENÇÃO cada palavra",
-            "\n   • NÃO invente informações - copie EXATAMENTE como está escrito",
-            "\n   • Exemplo: Se está 'NCXC-P-1032', escreva EXATAMENTE 'NCXC-P-1032'",
-            "\n   • ⚠️ NÃO troque letras! NCXC ≠ NXCX ≠ NCXX ≠ NCCX",
-            "\n3. 🗺️ PROJETO/PLANTA: ",
+            "\n2. 🗺️ PROJETO/PLANTA: ",
             "\n   • Se for PDF DIGITAL (texto selecionável): TEM TABELAS! Leia-as!",
             "\n   • Se for ESCANEADO (imagem): Extraia visualmente",
             "\n   • Procure por 'Tabela de Coordenadas' ou grade com vértices",
             "\n   • NO PROJETO que você está analisando agora: HÁ UMA TABELA NO CANTO!",
-            "\n",
-            "\n**⚠️ ATENÇÃO MÁXIMA AO LER MEMORIAL DESCRITIVO:**",
-            "\nO Memorial é um TEXTO LONGO onde as informações aparecem assim:",
-            "\n'...inicia-se no vértice NCXC-P-1032, de coordenadas (Longitude: -48°40'19,003\", Latitude: -21°00'03,754\"...'",
-            "\nOU:",
-            "\n'Perímetro (m): 3.873,67 m'",
-            "\n",
-            "\nVocê DEVE:",
-            "\n✅ Ler palavra por palavra, letra por letra",
-            "\n✅ Copiar códigos EXATAMENTE: NCXC-P-1032 (não invente NXCX ou similar)",
-            "\n✅ Extrair coordenadas completas (Longitude, Latitude, Altitude se houver)",
-            "\n✅ Identificar TODOS os vértices mesmo que estejam em parágrafos diferentes",
-            "\n✅ Procurar informações em TODO o texto (começo, meio, fim)",
-            "\n✅ Buscar 'Perímetro' ou 'perímetro' no texto - NÃO diga 'não encontrado' sem procurar!",
             "\n",
             "\n**⚠️ ATENÇÃO MÁXIMA AO LER PROJETO/PLANTA:**",
             "\n",
@@ -434,10 +381,6 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n**⚠️ ATENÇÃO ESPECIAL - INFORMAÇÕES PARCIAIS:**",
             "\n- Se um documento tem TEXTO PARCIAL de outro, isso NÃO é igual!",
-            "\n- Exemplo ERRADO de considerar igual:",
-            "\n  • INCRA: 'Estrada Municipal'",
-            "\n  • Memorial: 'Estrada Municipal que liga o distrito de São José ao centro'",
-            "\n  → Isso é DIFERENTE! O Memorial tem informação ADICIONAL importante!",
             "\n- Quando encontrar casos assim, marque como <span class='status-alerta'>⚠️</span>",
             "\n- E adicione observação: 'VERIFICAR: Um documento tem informação mais completa'",
             "\n- O usuário DEVE verificar manualmente se a informação adicional é relevante",
@@ -455,7 +398,7 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n✅ **DADOS TÉCNICOS:**",
             "\n   • Área Total em hectares (todas as casas decimais)",
-            "\n   • Perímetro em metros - BUSQUE NO TEXTO DO MEMORIAL!",
+            "\n   • Perímetro em metros",
             "\n   • Sistema de coordenadas (UTM/Geográfico/SIRGAS)",
             "\n   • Datum (SIRGAS2000, SAD69, etc)",
             "\n",
@@ -468,10 +411,6 @@ class VerificadorGeorreferenciamento:
             "\n     - Latitude (ex: -21°00'03,754\") OU N=7696237 (UTM)",
             "\n     - Altitude se houver (ex: 509,05 m)",
             "\n   • CRÍTICO: Não omita vértices! Liste TODOS que encontrar!",
-            "\n   • No Memorial, os vértices aparecem assim:",
-            "\n     'vértice NCXC-P-1032, de coordenadas (Longitude: -48°40'19,003\", Latitude: -21°00'03,754\"...'",
-            "\n     ou",
-            "\n     '12,68 m até o vértice NCXC-P-1033, de coordenadas...'",
             "\n   • No Projeto, os vértices estão em TABELAS:",
             "\n     Procure por tabela com colunas: Código | Longitude | Latitude | Altitude",
             "\n     Ou: Código | E | N",
@@ -655,18 +594,9 @@ class VerificadorGeorreferenciamento:
         # Adicionar imagens do INCRA
         prompt.extend(self.incra_images)
         prompt.append("\n--- FIM DOCUMENTO INCRA ---")
-        
-        # Adicionar imagens do Memorial se necessário
-        if incluir_memorial and self.memorial_images:
-            prompt.append("\n--- INÍCIO MEMORIAL DESCRITIVO ---")
-            prompt.append("\n⚠️ ATENÇÃO: Este documento tem TEXTO CORRIDO.")
-            prompt.append("\nLeia TODO o conteúdo com cuidado.")
-            prompt.append("\nAs informações estão espalhadas em parágrafos diferentes.")
-            prompt.extend(self.memorial_images)
-            prompt.append("\n--- FIM MEMORIAL DESCRITIVO ---")
-        
-        # Adicionar imagens do Projeto se solicitado
-        if incluir_projeto and self.projeto_images:
+
+        # Adicionar imagens do Projeto
+        if self.projeto_images:
             prompt.append("\n--- INÍCIO PROJETO/PLANTA ---")
             prompt.append("\n🎯 ATENÇÃO ESPECIAL PARA ESTE PROJETO:")
             prompt.append("\nEste é um PDF DIGITAL (não escaneado) - ele contém TABELAS DE DADOS!")
@@ -731,94 +661,28 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n--- FIM PROJETO/PLANTA ---")
             
         # Instruções de formato de saída - HTML PROFISSIONAL COM CORES
-        
-        # Determinar quais documentos foram fornecidos
-        docs_fornecidos = []
-        if self.incra_images:
-            docs_fornecidos.append("INCRA")
-        if incluir_memorial and self.memorial_images:
-            docs_fornecidos.append("MEMORIAL")
-        if incluir_projeto and self.projeto_images:
-            docs_fornecidos.append("PROJETO")
-        
-        docs_texto = " + ".join(docs_fornecidos)
-        
+
         instrucoes_saida = (
             "\n\n"
             "\n════════════════════════════════════════════════════════════════════"
             "\n                    FORMATO DO RELATÓRIO HTML                       "
             "\n════════════════════════════════════════════════════════════════════"
             "\n"
-            f"\n🎯 DOCUMENTOS SENDO COMPARADOS: {docs_texto}"
+            "\n🎯 DOCUMENTOS SENDO COMPARADOS: INCRA + PROJETO"
             "\n"
             "\n⚠️⚠️⚠️ REGRA CRÍTICA DE FORMATAÇÃO:"
             "\n"
-            "\n1️⃣ SOMENTE inclua no relatório os documentos que foram fornecidos!"
+            "\n1️⃣ Você está comparando: INCRA + PROJETO"
+            "\n   • Tabela deve ter 3 colunas: DADO | INCRA | PROJETO | STATUS"
             "\n"
+            "\n2️⃣ Estrutura da tabela:"
+            "\n   <thead><tr>"
+            "\n       <th>DADO</th>"
+            "\n       <th>INCRA</th>"
+            "\n       <th>PROJETO</th>"
+            "\n       <th>STATUS</th>"
+            "\n   </tr></thead>"
         )
-        
-        # Adicionar instruções específicas baseadas nos documentos
-        if incluir_memorial and not incluir_projeto:
-            instrucoes_saida += (
-                "\n   Você está comparando: INCRA + MEMORIAL"
-                "\n   • Tabela deve ter 3 colunas: DADO | INCRA | MEMORIAL | STATUS"
-                "\n   • NÃO mencione 'Projeto' ou 'Planta' em lugar nenhum"
-                "\n   • NÃO crie coluna 'PROJETO'"
-                "\n"
-            )
-        elif incluir_projeto and not incluir_memorial:
-            instrucoes_saida += (
-                "\n   Você está comparando: INCRA + PROJETO"
-                "\n   • Tabela deve ter 3 colunas: DADO | INCRA | PROJETO | STATUS"
-                "\n   • NÃO mencione 'Memorial' ou 'Memorial Descritivo' em lugar nenhum"
-                "\n   • NÃO crie coluna 'MEMORIAL'"
-                "\n"
-            )
-        else:  # Todos os 3
-            instrucoes_saida += (
-                "\n   Você está comparando: INCRA + MEMORIAL + PROJETO"
-                "\n   • Tabela deve ter 4 colunas: DADO | INCRA | MEMORIAL | PROJETO | STATUS"
-                "\n"
-            )
-        
-        instrucoes_saida += (
-            "\n2️⃣ Para documentos NÃO fornecidos:"
-            "\n   • NÃO crie coluna para eles"
-            "\n   • NÃO escreva 'N/A' ou 'Não fornecido'"
-            "\n   • SIMPLESMENTE omita essa coluna"
-            "\n"
-            "\n3️⃣ Estrutura da tabela:"
-        )
-        
-        # Cabeçalho da tabela baseado nos documentos
-        if incluir_memorial and not incluir_projeto:
-            instrucoes_saida += (
-                "\n   <thead><tr>"
-                "\n       <th>DADO</th>"
-                "\n       <th>INCRA</th>"
-                "\n       <th>MEMORIAL</th>"
-                "\n       <th>STATUS</th>"
-                "\n   </tr></thead>"
-            )
-        elif incluir_projeto and not incluir_memorial:
-            instrucoes_saida += (
-                "\n   <thead><tr>"
-                "\n       <th>DADO</th>"
-                "\n       <th>INCRA</th>"
-                "\n       <th>PROJETO</th>"
-                "\n       <th>STATUS</th>"
-                "\n   </tr></thead>"
-            )
-        else:
-            instrucoes_saida += (
-                "\n   <thead><tr>"
-                "\n       <th>DADO</th>"
-                "\n       <th>INCRA</th>"
-                "\n       <th>MEMORIAL</th>"
-                "\n       <th>PROJETO</th>"
-                "\n       <th>STATUS</th>"
-                "\n   </tr></thead>"
-            )
         
         instrucoes_saida += (
             "\n"
@@ -1365,7 +1229,7 @@ class VerificadorGeorreferenciamento:
         prompt.append(instrucoes_saida)
         return prompt
         
-    def _executar_analise_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = True):
+    def _executar_analise_gemini(self):
         """
         Executa a análise completa usando a API do Gemini.
         Deve ser executado em thread separada para não travar a GUI.
@@ -1374,56 +1238,40 @@ class VerificadorGeorreferenciamento:
             # Limpar área de resultados
             self.resultado_text.delete(1.0, tk.END)
             self.resultado_text.insert(tk.END, "🔄 Processando documentos...\n\n")
-            
+
             # Carregar INCRA (com rotação)
             self._atualizar_status("Carregando INCRA...")
             self.incra_images = self._carregar_pdf_como_imagens(
-                self.incra_path.get(), 
+                self.incra_path.get(),
                 rotacionar_90=True
             )
             self.resultado_text.insert(
-                tk.END, 
+                tk.END,
                 f"✅ INCRA carregado: {len(self.incra_images)} página(s)\n"
             )
-            
-            # Carregar Memorial se necessário
-            if incluir_memorial:
-                self._atualizar_status("Carregando Memorial Descritivo...")
-                self.memorial_images = self._carregar_pdf_como_imagens(
-                    self.memorial_path.get()
-                )
-                self.resultado_text.insert(
-                    tk.END, 
-                    f"✅ Memorial carregado: {len(self.memorial_images)} página(s)\n"
-                )
-            else:
-                self.memorial_images = []
-            
-            # Carregar Projeto se necessário
-            if incluir_projeto:
-                self._atualizar_status("Carregando Projeto/Planta...")
-                self.projeto_images = self._carregar_pdf_como_imagens(
-                    self.projeto_path.get()
-                )
-                self.resultado_text.insert(
-                    tk.END, 
-                    f"✅ Projeto carregado: {len(self.projeto_images)} página(s)\n"
-                )
-            else:
-                self.projeto_images = []
-                
+
+            # Carregar Projeto
+            self._atualizar_status("Carregando Projeto/Planta...")
+            self.projeto_images = self._carregar_pdf_como_imagens(
+                self.projeto_path.get()
+            )
+            self.resultado_text.insert(
+                tk.END,
+                f"✅ Projeto carregado: {len(self.projeto_images)} página(s)\n"
+            )
+
             self.resultado_text.insert(tk.END, "\n" + "="*80 + "\n\n")
-            
+
             # Configurar API do Gemini
             self._atualizar_status("Configurando API do Gemini...")
             genai.configure(api_key=self.api_key.get().strip())
-            
+
             # Usar modelo Gemini 2.5 Flash Lite conforme especificado
             model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            
+
             # Construir prompt
             self._atualizar_status("Construindo análise multimodal...")
-            prompt = self._construir_prompt_gemini(incluir_projeto, incluir_memorial)
+            prompt = self._construir_prompt_gemini()
             
             # Executar análise
             self._atualizar_status("Analisando documentos com IA... (pode levar alguns minutos)")
@@ -1454,95 +1302,62 @@ class VerificadorGeorreferenciamento:
         finally:
             self._habilitar_botoes()
             
-    def _comparar_parcial(self):
-        """Compara apenas INCRA vs. Memorial."""
-        if not self._validar_entrada(incluir_projeto=False, incluir_memorial=True):
+    def _comparar_documentos(self):
+        """Compara INCRA vs. Projeto."""
+        if not self._validar_entrada():
             return
-            
+
         self._desabilitar_botoes()
-        
+
         # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini, args=(False, True))
-        thread.daemon = True
-        thread.start()
-    
-    def _comparar_projeto(self):
-        """Compara apenas INCRA vs. Projeto."""
-        if not self._validar_entrada(incluir_projeto=True, incluir_memorial=False):
-            return
-            
-        self._desabilitar_botoes()
-        
-        # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini, args=(True, False))
-        thread.daemon = True
-        thread.start()
-        
-    def _comparar_todos(self):
-        """Compara INCRA + Memorial + Projeto."""
-        if not self._validar_entrada(incluir_projeto=True, incluir_memorial=True):
-            return
-            
-        self._desabilitar_botoes()
-        
-        # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini, args=(True, True))
+        thread = threading.Thread(target=self._executar_analise_gemini)
         thread.daemon = True
         thread.start()
 
 
 class JanelaComparacaoManual:
     """Janela para comparação visual manual dos documentos PDF."""
-    
-    def __init__(self, parent, incra_path, memorial_path, projeto_path=None):
+
+    def __init__(self, parent, incra_path, projeto_path):
         self.janela = tk.Toplevel(parent)
         self.janela.title("Comparação Visual Manual - Georreferenciamento")
-        self.janela.geometry("1600x900")
+        self.janela.geometry("1400x900")
         self.janela.configure(bg='#2c3e50')
-        
+
         # Caminhos dos arquivos
         self.incra_path = incra_path
-        self.memorial_path = memorial_path
         self.projeto_path = projeto_path
-        
+
         # Listas de imagens carregadas
         self.incra_images = []
-        self.memorial_images = []
         self.projeto_images = []
-        
+
         # Índices de página atual
         self.incra_pagina = 0
-        self.memorial_pagina = 0
         self.projeto_pagina = 0
-        
+
         # Níveis de zoom (100% = 1.0)
         self.incra_zoom = 1.0
-        self.memorial_zoom = 1.0
         self.projeto_zoom = 1.0
-        
+
         # Ângulo de rotação (0, 90, 180, 270)
         self.incra_rotacao = 0
-        self.memorial_rotacao = 0
         self.projeto_rotacao = 0
-        
+
         # Posição do canvas (para arrastar)
         self.incra_pos_x = 0
         self.incra_pos_y = 0
-        self.memorial_pos_x = 0
-        self.memorial_pos_y = 0
         self.projeto_pos_x = 0
         self.projeto_pos_y = 0
-        
+
         # Controle de arrastar
         self.incra_drag_start = None
-        self.memorial_drag_start = None
         self.projeto_drag_start = None
-        
+
         # Imagens PhotoImage (para exibição no Tkinter)
         self.incra_photo = None
-        self.memorial_photo = None
         self.projeto_photo = None
-        
+
         self._criar_interface()
         self._carregar_documentos()
         
@@ -1803,17 +1618,11 @@ class JanelaComparacaoManual:
             self.incra_images = convert_from_path(self.incra_path, dpi=150)
             # Rotacionar INCRA
             self.incra_images = [img.rotate(-90, expand=True) for img in self.incra_images]
-            
-            # Carregar Memorial
-            status_label.config(text="Carregando Memorial...")
+
+            # Carregar Projeto
+            status_label.config(text="Carregando Projeto...")
             progress.update()
-            self.memorial_images = convert_from_path(self.memorial_path, dpi=150)
-            
-            # Carregar Projeto se houver
-            if self.projeto_path:
-                status_label.config(text="Carregando Projeto...")
-                progress.update()
-                self.projeto_images = convert_from_path(self.projeto_path, dpi=150)
+            self.projeto_images = convert_from_path(self.projeto_path, dpi=150)
             
             progress.destroy()
             

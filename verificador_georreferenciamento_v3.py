@@ -1412,38 +1412,139 @@ class VerificadorGeorreferenciamento:
 
     def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
         """
-        Constrói relatório comparando dados estruturados (nova versão V3).
+        Constrói relatório HTML comparando dados estruturados (nova versão V3).
         Compara dados extraídos dos Excel em vez de fazer OCR em tempo real.
         """
-        linhas = []
+        html = []
 
-        # Cabeçalho
-        linhas.append("=" * 80)
-        linhas.append("📋 RELATÓRIO DE CONFERÊNCIA DE GEORREFERENCIAMENTO")
-        linhas.append("Versão 3.0 - Comparação de Dados Estruturados (Excel)")
-        linhas.append("=" * 80)
-        linhas.append("")
+        # Cabeçalho HTML
+        html.append("""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Conferência - Georreferenciamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+        .info-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .identico {
+            background-color: #d4edda !important;
+        }
+        .diferente {
+            background-color: #f8d7da !important;
+        }
+        .status-ok {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-erro {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .resumo {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .resumo h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .destaque {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 RELATÓRIO DE CONFERÊNCIA DE GEORREFERENCIAMENTO</h1>
+        <p style="text-align: center; color: #7f8c8d;"><strong>Versão 3.0 - Comparação de Dados Estruturados (Excel)</strong></p>
+""")
 
         # Seção INCRA vs Projeto
         if incluir_projeto and self.projeto_data:
-            linhas.append("-" * 80)
-            linhas.append("📐 COMPARAÇÃO: INCRA vs. PROJETO/PLANTA")
-            linhas.append("-" * 80)
-            linhas.append("")
-
             # Estatísticas
             num_vertices_incra = len(self.incra_data['data'])
             num_vertices_projeto = len(self.projeto_data['data'])
-            linhas.append(f"Total de vértices INCRA: {num_vertices_incra}")
-            linhas.append(f"Total de vértices PROJETO: {num_vertices_projeto}")
-            linhas.append("")
+
+            html.append(f"""
+        <div class="info-box">
+            <p><strong>📊 Estatísticas:</strong></p>
+            <ul>
+                <li>Total de vértices INCRA: <strong>{num_vertices_incra}</strong></li>
+                <li>Total de vértices PROJETO: <strong>{num_vertices_projeto}</strong></li>
+            </ul>
+        </div>
+
+        <h2>📐 COMPARAÇÃO: INCRA vs. PROJETO/PLANTA</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Vértice</th>
+                    <th style="width: 120px;">Campo</th>
+                    <th>INCRA</th>
+                    <th>PROJETO</th>
+                    <th style="width: 100px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+""")
 
             # Comparar linha por linha
             max_rows = max(num_vertices_incra, num_vertices_projeto)
-
-            linhas.append("COMPARAÇÃO DETALHADA:")
-            linhas.append("")
-
             diferencas = 0
             identicos = 0
 
@@ -1472,57 +1573,101 @@ class VerificadorGeorreferenciamento:
                                alt_incra == alt_projeto)
 
                     if identico:
-                        status = "✅ IDÊNTICO"
+                        status_class = "identico"
+                        status_texto = '<span class="status-ok">✅ IDÊNTICO</span>'
                         identicos += 1
                     else:
-                        status = "❌ DIFERENTE"
+                        status_class = "diferente"
+                        status_texto = '<span class="status-erro">❌ DIFERENTE</span>'
                         diferencas += 1
 
-                    linhas.append(f"Vértice {i+1}: {status}")
-                    linhas.append(f"  Código    | INCRA: {codigo_incra:20} | PROJETO: {codigo_projeto}")
-                    linhas.append(f"  Longitude | INCRA: {long_incra:20} | PROJETO: {long_projeto}")
-                    linhas.append(f"  Latitude  | INCRA: {lat_incra:20} | PROJETO: {lat_projeto}")
-                    linhas.append(f"  Altitude  | INCRA: {alt_incra:20} | PROJETO: {alt_projeto}")
-                    linhas.append("")
+                    # Adicionar linhas da tabela
+                    html.append(f"""
+                <tr class="{status_class}">
+                    <td rowspan="4" style="text-align: center; vertical-align: middle; font-weight: bold;">#{i+1}</td>
+                    <td><strong>Código</strong></td>
+                    <td>{codigo_incra}</td>
+                    <td>{codigo_projeto}</td>
+                    <td rowspan="4" style="text-align: center; vertical-align: middle;">{status_texto}</td>
+                </tr>
+                <tr class="{status_class}">
+                    <td><strong>Longitude</strong></td>
+                    <td>{long_incra}</td>
+                    <td>{long_projeto}</td>
+                </tr>
+                <tr class="{status_class}">
+                    <td><strong>Latitude</strong></td>
+                    <td>{lat_incra}</td>
+                    <td>{lat_projeto}</td>
+                </tr>
+                <tr class="{status_class}">
+                    <td><strong>Altitude</strong></td>
+                    <td>{alt_incra}</td>
+                    <td>{alt_projeto}</td>
+                </tr>
+""")
 
                 elif incra_row and not projeto_row:
                     diferencas += 1
-                    linhas.append(f"Vértice {i+1}: ❌ AUSENTE NO PROJETO")
-                    linhas.append(f"  Código INCRA: {incra_row[0]}")
-                    linhas.append("")
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ AUSENTE NO PROJETO</strong> - Código INCRA: {incra_row[0]}</td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
 
                 elif not incra_row and projeto_row:
                     diferencas += 1
-                    linhas.append(f"Vértice {i+1}: ❌ EXTRA NO PROJETO (não existe no INCRA)")
-                    linhas.append(f"  Código PROJETO: {projeto_row[0]}")
-                    linhas.append("")
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ EXTRA NO PROJETO</strong> (não existe no INCRA) - Código: {projeto_row[0]}</td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+            html.append("""
+            </tbody>
+        </table>
+""")
 
             # Resumo
-            linhas.append("-" * 80)
-            linhas.append("📊 RESUMO DA COMPARAÇÃO")
-            linhas.append("-" * 80)
-            linhas.append(f"Total de vértices analisados: {max_rows}")
-            linhas.append(f"✅ Vértices idênticos: {identicos}")
-            linhas.append(f"❌ Vértices diferentes: {diferencas}")
-            linhas.append("")
+            resultado_final = "🎉 TODOS OS VÉRTICES ESTÃO IDÊNTICOS!" if diferencas == 0 else "⚠️ EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS"
+            resultado_cor = "#28a745" if diferencas == 0 else "#dc3545"
 
-            if diferencas == 0:
-                linhas.append("🎉 RESULTADO: TODOS OS VÉRTICES ESTÃO IDÊNTICOS!")
-            else:
-                linhas.append("⚠️  RESULTADO: EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS")
-                linhas.append("    Por favor, revise os vértices marcados como DIFERENTE")
+            html.append(f"""
+        <div class="resumo">
+            <h3>📊 RESUMO DA COMPARAÇÃO</h3>
+            <p class="destaque">Total de vértices analisados: {max_rows}</p>
+            <p>✅ Vértices idênticos: <strong style="color: #28a745;">{identicos}</strong></p>
+            <p>❌ Vértices diferentes: <strong style="color: #dc3545;">{diferencas}</strong></p>
+            <hr>
+            <p class="destaque" style="color: {resultado_cor};">{resultado_final}</p>
+            {f'<p style="color: #856404;">Por favor, revise os vértices marcados como DIFERENTE na tabela acima.</p>' if diferencas > 0 else ''}
+        </div>
+""")
 
-        linhas.append("")
-        linhas.append("=" * 80)
-        linhas.append("INFORMAÇÕES DO PROCESSO:")
-        linhas.append(f"- Arquivos Excel gerados para auditoria")
-        linhas.append(f"- INCRA: {self.incra_excel_path}")
-        linhas.append(f"- PROJETO: {self.projeto_excel_path}")
-        linhas.append("=" * 80)
-        linhas.append("")
-        linhas.append("Relatório gerado automaticamente - Versão 3.0")
+        # Informações do processo
+        html.append(f"""
+        <div class="info-box">
+            <h3>📁 INFORMAÇÕES DO PROCESSO</h3>
+            <p><strong>Arquivos Excel gerados para auditoria:</strong></p>
+            <ul>
+                <li>INCRA: <code>{self.incra_excel_path}</code></li>
+                <li>PROJETO: <code>{self.projeto_excel_path}</code></li>
+            </ul>
+        </div>
 
-        return "\n".join(linhas)
+        <p style="text-align: center; color: #7f8c8d; margin-top: 40px;">
+            <em>Relatório gerado automaticamente - Versão 3.0</em>
+        </p>
+    </div>
+</body>
+</html>
+""")
+
+        return "".join(html)
 
     def _executar_analise_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = False):
         """
@@ -1572,25 +1717,53 @@ class VerificadorGeorreferenciamento:
             self.resultado_text.insert(tk.END, "🔄 Comparando dados estruturados...\n\n")
             self.root.update_idletasks()
 
-            # Construir relatório de comparação
-            relatorio = self._construir_relatorio_comparacao(True, False)
+            # Construir relatório de comparação HTML
+            relatorio_html = self._construir_relatorio_comparacao(True, False)
 
-            # Exibir resultado
-            self.resultado_text.insert(tk.END, relatorio)
+            # Salvar HTML automaticamente
+            output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
+            output_dir.mkdir(exist_ok=True)
+            html_path = output_dir / "relatorio_comparacao.html"
 
-            # Salvar HTML para poder exportar depois
-            self.ultimo_relatorio_html = relatorio
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(relatorio_html)
+
+            # Salvar HTML para exportação futura
+            self.ultimo_relatorio_html = relatorio_html
+
+            # Exibir resumo no ScrolledText
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
+            self.resultado_text.insert(tk.END, "✅ ANÁLISE CONCLUÍDA COM SUCESSO!\n")
+            self.resultado_text.insert(tk.END, "="*80 + "\n\n")
+
+            # Contar diferenças para o resumo
+            num_vertices = len(self.incra_data['data'])
+            self.resultado_text.insert(tk.END, f"📊 Total de vértices analisados: {num_vertices}\n\n")
+
+            self.resultado_text.insert(tk.END, "📁 ARQUIVOS GERADOS:\n")
+            self.resultado_text.insert(tk.END, f"   • INCRA (Excel): {self.incra_excel_path}\n")
+            self.resultado_text.insert(tk.END, f"   • PROJETO (Excel): {self.projeto_excel_path}\n")
+            self.resultado_text.insert(tk.END, f"   • RELATÓRIO (HTML): {html_path}\n\n")
+
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
+            self.resultado_text.insert(tk.END, "🌐 O relatório HTML foi aberto automaticamente no navegador!\n")
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
 
             # Habilitar botão de salvar
             self.btn_salvar_html.config(state='normal')
 
             self._atualizar_status("✅ Análise concluída!")
 
+            # Abrir HTML no navegador automaticamente
+            import webbrowser
+            webbrowser.open(f'file://{html_path}')
+
             messagebox.showinfo("Sucesso",
-                              "Análise concluída com sucesso!\n\n"
-                              "✅ Dados extraídos para Excel\n"
-                              "✅ Comparação estruturada realizada\n\n"
-                              "Você pode salvar o relatório em HTML clicando no botão abaixo.")
+                              f"Análise concluída com sucesso!\n\n"
+                              f"✅ Dados extraídos para Excel\n"
+                              f"✅ Comparação estruturada realizada\n"
+                              f"✅ Relatório HTML aberto no navegador\n\n"
+                              f"Arquivo: {html_path}")
 
         except Exception as e:
             erro_msg = f"❌ ERRO: {str(e)}"

@@ -517,6 +517,33 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n⚠️ INSTRUÇÕES CRÍTICAS PARA LER A TABELA:",
             "\n",
+            "\n🚨🚨🚨 REGRA ABSOLUTA - EXTRAÇÃO COMPLETA 🚨🚨🚨",
+            "\n",
+            "\n⛔ ZERO TOLERÂNCIA PARA LINHAS FALTANDO:",
+            "\n• Você DEVE extrair 100% das linhas da tabela",
+            "\n• NÃO pule NENHUMA linha",
+            "\n• NÃO omita NENHUM vértice ou segmento",
+            "\n• MANTENHA a ordem EXATA do documento original",
+            "\n• LEIA linha por linha, da primeira até a ÚLTIMA",
+            "\n• Se a tabela tem 26 linhas, seu relatório DEVE ter 26 linhas",
+            "\n• Se a tabela tem 30 linhas, seu relatório DEVE ter 30 linhas",
+            "\n",
+            "\n📊 MÉTODO DE EXTRAÇÃO LINHA POR LINHA:",
+            "\n1. Comece na primeira linha de dados (após o cabeçalho)",
+            "\n2. Leia e extraia: linha 1, linha 2, linha 3, linha 4...",
+            "\n3. Continue SEM PULAR até a última linha",
+            "\n4. CONTE quantas linhas você extraiu",
+            "\n5. VERIFIQUE: O número de linhas extraídas = número de linhas na tabela?",
+            "\n6. Se NÃO, VOLTE e extraia as linhas que faltam!",
+            "\n",
+            "\n✅ VERIFICAÇÃO OBRIGATÓRIA:",
+            "\nApós a extração, PERGUNTE A SI MESMO:",
+            "\n• Quantas linhas de vértices tem na tabela? _____",
+            "\n• Quantas linhas de vértices eu extraí? _____",
+            "\n• Os números são IGUAIS? Se NÃO, falta algo!",
+            "\n",
+            "\n════════════════════════════════════════════════════════════",
+            "\n",
             "\n1. LOCALIZE a tabela 'DESCRIÇÃO DA PARCELA'",
             "\n",
             "\n2. A tabela tem este formato:",
@@ -642,6 +669,33 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • Essas colunas vêm DEPOIS de: Código, Longitude, Latitude, Altitude")
             prompt.append("\n   • EXTRAIA também essas informações para comparação!")
             prompt.append("\n")
+            prompt.append("\n🚨🚨🚨 REGRA ABSOLUTA - EXTRAÇÃO COMPLETA (PROJETO) 🚨🚨🚨")
+            prompt.append("\n")
+            prompt.append("\n⛔ ZERO TOLERÂNCIA PARA LINHAS FALTANDO:")
+            prompt.append("\n• Você DEVE extrair 100% das linhas da tabela do PROJETO")
+            prompt.append("\n• NÃO pule NENHUMA linha")
+            prompt.append("\n• NÃO omita NENHUM vértice")
+            prompt.append("\n• MANTENHA a ordem EXATA do documento original")
+            prompt.append("\n• LEIA linha por linha sequencialmente")
+            prompt.append("\n• Conte: Se tem 26 vértices, extraia os 26!")
+            prompt.append("\n")
+            prompt.append("\n📊 MÉTODO DE EXTRAÇÃO SEQUENCIAL:")
+            prompt.append("\n1. Localize a tabela 'Tabela de Coordenadas...'")
+            prompt.append("\n2. Identifique a primeira linha de dados")
+            prompt.append("\n3. Extraia: Linha 1 → Linha 2 → Linha 3 → ... → Última linha")
+            prompt.append("\n4. NÃO pule linhas intermediárias")
+            prompt.append("\n5. CONTE o total de linhas extraídas")
+            prompt.append("\n6. COMPARE com o total na tabela original")
+            prompt.append("\n")
+            prompt.append("\n✅ CHECKLIST DE VERIFICAÇÃO:")
+            prompt.append("\n□ Li TODAS as linhas da tabela?")
+            prompt.append("\n□ A primeira linha está incluída?")
+            prompt.append("\n□ A última linha está incluída?")
+            prompt.append("\n□ Não pulei nenhuma linha do meio?")
+            prompt.append("\n□ A ordem está correta?")
+            prompt.append("\n")
+            prompt.append("\n════════════════════════════════════════════════════════════")
+            prompt.append("\n")
             prompt.append("\n⚠️ INSTRUÇÕES CRÍTICAS DE EXTRAÇÃO:")
             prompt.append("\n")
             prompt.append("\n1. 🔍 LOCALIZE a tabela completa")
@@ -693,7 +747,40 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n")
             prompt.extend(self.projeto_images)
             prompt.append("\n--- FIM PROJETO/PLANTA ---")
-            
+
+        # INSTRUÇÕES FINAIS CRÍTICAS ANTES DO HTML
+        prompt.append("\n")
+        prompt.append("\n════════════════════════════════════════════════════════════")
+        prompt.append("\n           🚨 LEMBRETE FINAL - ANTES DE GERAR O HTML 🚨")
+        prompt.append("\n════════════════════════════════════════════════════════════")
+        prompt.append("\n")
+        prompt.append("\n⚠️ ANTES de gerar o relatório HTML, VERIFIQUE:")
+        prompt.append("\n")
+        prompt.append("\n1. ✅ Extraí TODAS as linhas da tabela INCRA?")
+        prompt.append("\n   • Contei quantas linhas tem na tabela original?")
+        prompt.append("\n   • Contei quantas linhas extraí?")
+        prompt.append("\n   • Os números são IGUAIS?")
+        prompt.append("\n")
+        prompt.append("\n2. ✅ Extraí TODAS as linhas da tabela PROJETO?")
+        prompt.append("\n   • Contei quantas linhas tem na tabela original?")
+        prompt.append("\n   • Contei quantas linhas extraí?")
+        prompt.append("\n   • Os números são IGUAIS?")
+        prompt.append("\n")
+        prompt.append("\n3. ✅ Mantive a ORDEM EXATA dos documentos originais?")
+        prompt.append("\n   • Primeira linha → vem primeiro no relatório")
+        prompt.append("\n   • Segunda linha → vem em segundo no relatório")
+        prompt.append("\n   • Última linha → vem por último no relatório")
+        prompt.append("\n")
+        prompt.append("\n4. ✅ NÃO pulei nenhuma linha do meio?")
+        prompt.append("\n   • Se tem vértices V-01, V-02, V-03... V-26")
+        prompt.append("\n   • Meu relatório tem TODOS eles, em sequência?")
+        prompt.append("\n")
+        prompt.append("\n🔴 SE ALGUMA RESPOSTA FOR \"NÃO\": VOLTE E EXTRAIA NOVAMENTE!")
+        prompt.append("\n🟢 SE TODAS AS RESPOSTAS FOREM \"SIM\": Prossiga com o HTML!")
+        prompt.append("\n")
+        prompt.append("\n════════════════════════════════════════════════════════════")
+        prompt.append("\n")
+
         # Instruções de formato de saída - HTML PROFISSIONAL COM CORES
 
         instrucoes_saida = (

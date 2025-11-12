@@ -563,11 +563,20 @@ class VerificadorGeorreferenciamento:
             "\n│ AKE-M-1028  │ 140°40' │ 43,85    │ CNS: 12.102-0 | Mat...  │",
             "\n└─────────────┴─────────┴──────────┴─────────────────────────┘",
             "\n",
-            "\n3. COPIE os códigos dos vértices EXATAMENTE:",
+            "\n3. COPIE os códigos dos vértices EXATAMENTE - CARACTERE POR CARACTERE:",
+            "\n   🚨🚨🚨 EXTREMAMENTE IMPORTANTE: NÃO INVENTE CÓDIGOS! 🚨🚨🚨",
+            "\n   • Copie o que ESTÁ ESCRITO, não o que você ACHA que deveria estar!",
             "\n   • Exemplo: AKE-V-0166, AKE-M-1028, AKE-P-3567",
             "\n   • ⚠️ NÃO troque letras: AKE ≠ AME ≠ AXE ≠ AKF",
-            "\n   • ⚠️ NÃO troque números: 1028 ≠ 1008 ≠ 1128",
-            "\n   • ⚠️ Mantenha hífens e letras: AKE-P-3567 (não AKE P 3567)",
+            "\n   • ⚠️ NÃO troque números: 1028 ≠ 1008 ≠ 1128 ≠ 1030",
+            "\n   • ⚠️ Se está 1087, copie 1087 (NÃO mude para 1030!)",
+            "\n   • ⚠️ Se está 1088, copie 1088 (NÃO omita!)",
+            "\n   • ⚠️ Mantenha hífens: AKE-P-3567 (não AKE P 3567)",
+            "\n   • ⚠️⚠️⚠️ UNDERSCORES são DIFERENTES de HÍFENS:",
+            "\n       - Se está AKE_P-3568 (com underscore _), copie AKE_P-3568",
+            "\n       - Se está AKE-P-3568 (com hífen -), copie AKE-P-3568",
+            "\n       - AKE_P ≠ AKE-P (são DIFERENTES!)",
+            "\n   • OLHE COM ATENÇÃO: é hífen (-) ou underscore (_)?",
             "\n",
             "\n4. COPIE as coordenadas COM TODOS OS SÍMBOLOS:",
             "\n   • Longitude: -48°34'14,782\" (sinal, °, ', \")",
@@ -708,8 +717,20 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • Depois: TODAS as linhas de dados")
             prompt.append("\n   • Pode ter 20, 26, 30 ou mais vértices!")
             prompt.append("\n")
-            prompt.append("\n3. ✍️ COPIE EXATAMENTE")
-            prompt.append("\n   • Código do vértice: AKE-V-0166, AKE-M-1028, AKE-P-3567...")
+            prompt.append("\n3. ✍️ COPIE EXATAMENTE - CARACTERE POR CARACTERE")
+            prompt.append("\n   🚨🚨🚨 NÃO INVENTE CÓDIGOS! COPIE O QUE ESTÁ ESCRITO! 🚨🚨🚨")
+            prompt.append("\n   ")
+            prompt.append("\n   CÓDIGOS:")
+            prompt.append("\n   • Se vê AKE-V-0166, copie AKE-V-0166")
+            prompt.append("\n   • Se vê AKE-M-1087, copie AKE-M-1087 (NÃO mude para 1030!)")
+            prompt.append("\n   • Se vê AKE-M-1088, copie AKE-M-1088 (NÃO omita!)")
+            prompt.append("\n   • Se vê AKE_P-3568 (underscore _), copie AKE_P-3568")
+            prompt.append("\n   • Se vê AKE_P-3569 (underscore _), copie AKE_P-3569")
+            prompt.append("\n   • Se vê AKE-P-3570 (hífen -), copie AKE-P-3570")
+            prompt.append("\n   • ⚠️ ATENÇÃO: _ (underscore) ≠ - (hífen)")
+            prompt.append("\n   • ⚠️ NÚMEROS EXATOS: 1087 ≠ 1030, 1088 ≠ 1080")
+            prompt.append("\n   ")
+            prompt.append("\n   COORDENADAS:")
             prompt.append("\n   • Longitude: 48°34'14,782\" W (com graus, minutos, segundos E direção)")
             prompt.append("\n   • Latitude: 20°50'45,291\" S (com graus, minutos, segundos E direção)")
             prompt.append("\n   • Altitude: 532,78 (número simples)")
@@ -775,8 +796,49 @@ class VerificadorGeorreferenciamento:
         prompt.append("\n   • Se tem vértices V-01, V-02, V-03... V-26")
         prompt.append("\n   • Meu relatório tem TODOS eles, em sequência?")
         prompt.append("\n")
+        prompt.append("\n5. ✅ Extraí TODOS os SEGMENTOS VANTE?")
+        prompt.append("\n   🚨🚨🚨 OBRIGATÓRIO: A seção SEGMENTO VANTE deve estar preenchida!")
+        prompt.append("\n   • Tanto do INCRA quanto do PROJETO")
+        prompt.append("\n   • NO INCRA: Está na segunda parte da tabela (Código, Azimute, Dist., Confrontações)")
+        prompt.append("\n   • NO PROJETO: Está após as colunas de coordenadas (colunas Azimute e Distância)")
+        prompt.append("\n   • Se não encontrei dados de SEGMENTO VANTE, PROCURE NOVAMENTE!")
+        prompt.append("\n   • O relatório HTML DEVE ter a SEÇÃO 4: SEGMENTO VANTE preenchida!")
+        prompt.append("\n")
+        prompt.append("\n6. ✅ Copiei os CÓDIGOS EXATAMENTE como aparecem?")
+        prompt.append("\n   🚨 CRÍTICO: Códigos devem ser copiados CARACTERE POR CARACTERE!")
+        prompt.append("\n   • Se está escrito AKE-M-1087, copie AKE-M-1087 (NÃO invente 1030!)")
+        prompt.append("\n   • Se está escrito AKE_P-3568 (com underscore), copie AKE_P-3568")
+        prompt.append("\n   • Se está escrito AKE-P-3568 (com hífen), copie AKE-P-3568")
+        prompt.append("\n   • UNDERSCORES (_) são DIFERENTES de HÍFENS (-)")
+        prompt.append("\n   • Números devem ser EXATOS: 1087 ≠ 1030 ≠ 1088")
+        prompt.append("\n   • NÃO normalize, NÃO corrija, COPIE EXATAMENTE!")
+        prompt.append("\n")
         prompt.append("\n🔴 SE ALGUMA RESPOSTA FOR \"NÃO\": VOLTE E EXTRAIA NOVAMENTE!")
         prompt.append("\n🟢 SE TODAS AS RESPOSTAS FOREM \"SIM\": Prossiga com o HTML!")
+        prompt.append("\n")
+        prompt.append("\n════════════════════════════════════════════════════════════")
+        prompt.append("\n")
+        prompt.append("\n🚨🚨🚨 REGRA ABSOLUTA DE RESPOSTA 🚨🚨🚨")
+        prompt.append("\n")
+        prompt.append("\n⛔ SUA RESPOSTA DEVE COMEÇAR DIRETAMENTE COM: <!DOCTYPE html>")
+        prompt.append("\n")
+        prompt.append("\n❌ NÃO ESCREVA:")
+        prompt.append("\n   • \"OK. Entendido! Vou analisar...\"")
+        prompt.append("\n   • \"ANÁLISE DOS DOCUMENTOS:\"")
+        prompt.append("\n   • \"DADOS CADASTRAIS:\"")
+        prompt.append("\n   • \"TABELA DE COORDENADAS:\"")
+        prompt.append("\n   • Qualquer texto explicativo ou rascunho")
+        prompt.append("\n")
+        prompt.append("\n✅ ESCREVA APENAS:")
+        prompt.append("\n   • Primeira linha: <!DOCTYPE html>")
+        prompt.append("\n   • Depois: <html>")
+        prompt.append("\n   • Depois: todo o HTML do relatório")
+        prompt.append("\n   • Última linha: </html>")
+        prompt.append("\n")
+        prompt.append("\n🔴 NADA ANTES DO <!DOCTYPE html>")
+        prompt.append("\n🔴 NADA DEPOIS DO </html>")
+        prompt.append("\n🔴 SEM RASCUNHOS, SEM ANÁLISES PRÉVIAS")
+        prompt.append("\n🟢 SOMENTE O CÓDIGO HTML PURO!")
         prompt.append("\n")
         prompt.append("\n════════════════════════════════════════════════════════════")
         prompt.append("\n")
@@ -1039,19 +1101,36 @@ class VerificadorGeorreferenciamento:
 
         # Remover blocos de código markdown se houver
         texto = re.sub(r'```html\s*', '', texto)
-        texto = re.sub(r'```\s*$', '', texto)
+        texto = re.sub(r'```\s*', '', texto)
 
-        # Procurar pelo início do HTML
+        # Procurar pelo início do HTML de forma mais agressiva
         inicio_html = texto.find('<!DOCTYPE html>')
         if inicio_html == -1:
+            inicio_html = texto.find('<!DOCTYPE HTML>')
+        if inicio_html == -1:
             inicio_html = texto.find('<html')
+        if inicio_html == -1:
+            inicio_html = texto.find('<HTML')
 
         # Procurar pelo fim do HTML
         fim_html = texto.rfind('</html>')
+        if fim_html == -1:
+            fim_html = texto.rfind('</HTML>')
 
         if inicio_html != -1 and fim_html != -1:
-            # Extrair apenas o HTML
+            # Extrair apenas o HTML, cortando TODO o texto antes e depois
             html_puro = texto[inicio_html:fim_html + 7]  # +7 para incluir </html>
+
+            # Limpar qualquer texto que ainda esteja antes do DOCTYPE
+            # (remover linhas antes que não sejam HTML)
+            linhas = html_puro.split('\n')
+            primeira_linha_html = 0
+            for i, linha in enumerate(linhas):
+                if '<!DOCTYPE' in linha or '<html' in linha or '<HTML' in linha:
+                    primeira_linha_html = i
+                    break
+
+            html_puro = '\n'.join(linhas[primeira_linha_html:])
             return html_puro
         else:
             # Se não encontrar marcadores HTML, retornar o texto original

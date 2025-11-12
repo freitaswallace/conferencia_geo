@@ -1451,20 +1451,37 @@ class VerificadorGeorreferenciamento:
         if not coord:
             return ""
 
-        # Remover espaços em branco
-        coord = coord.strip()
+        # Converter para string e remover espaços em branco
+        coord = str(coord).strip()
 
         # Remover "-" do início (INCRA)
         if coord.startswith("-"):
-            coord = coord[1:]
+            coord = coord[1:].strip()
 
         # Remover " W" ou " S" do final (PROJETO)
-        coord = coord.replace(" W", "").replace(" S", "")
+        coord = coord.replace(" W", "").replace(" S", "").strip()
 
         # Remover aspas e espaços extras
-        coord = coord.strip().strip('"').strip("'")
+        coord = coord.strip().strip('"').strip("'").strip()
 
         return coord
+
+    def _limpar_string(self, valor) -> str:
+        """
+        Limpa qualquer valor convertendo para string e removendo espaços em branco.
+        Remove também caracteres invisíveis que podem causar diferenças falsas.
+        """
+        if valor is None:
+            return ""
+
+        # Converter para string e aplicar strip múltiplas vezes
+        valor_limpo = str(valor).strip()
+
+        # Remover espaços duplos internos
+        while "  " in valor_limpo:
+            valor_limpo = valor_limpo.replace("  ", " ")
+
+        return valor_limpo
 
     def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
         """
@@ -1611,18 +1628,18 @@ class VerificadorGeorreferenciamento:
                 projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
 
                 if incra_row and projeto_row:
-                    # Extrair dados VÉRTICE (colunas 0-3)
-                    codigo_incra = incra_row[0] if len(incra_row) > 0 else ""
-                    codigo_projeto = projeto_row[0] if len(projeto_row) > 0 else ""
+                    # Extrair e limpar dados VÉRTICE (colunas 0-3)
+                    codigo_incra = self._limpar_string(incra_row[0] if len(incra_row) > 0 else "")
+                    codigo_projeto = self._limpar_string(projeto_row[0] if len(projeto_row) > 0 else "")
 
-                    long_incra = incra_row[1] if len(incra_row) > 1 else ""
-                    long_projeto = projeto_row[1] if len(projeto_row) > 1 else ""
+                    long_incra = self._limpar_string(incra_row[1] if len(incra_row) > 1 else "")
+                    long_projeto = self._limpar_string(projeto_row[1] if len(projeto_row) > 1 else "")
 
-                    lat_incra = incra_row[2] if len(incra_row) > 2 else ""
-                    lat_projeto = projeto_row[2] if len(projeto_row) > 2 else ""
+                    lat_incra = self._limpar_string(incra_row[2] if len(incra_row) > 2 else "")
+                    lat_projeto = self._limpar_string(projeto_row[2] if len(projeto_row) > 2 else "")
 
-                    alt_incra = incra_row[3] if len(incra_row) > 3 else ""
-                    alt_projeto = projeto_row[3] if len(projeto_row) > 3 else ""
+                    alt_incra = self._limpar_string(incra_row[3] if len(incra_row) > 3 else "")
+                    alt_projeto = self._limpar_string(projeto_row[3] if len(projeto_row) > 3 else "")
 
                     # Normalizar coordenadas para comparação
                     long_incra_norm = self._normalizar_coordenada(long_incra)
@@ -1631,7 +1648,7 @@ class VerificadorGeorreferenciamento:
                     lat_incra_norm = self._normalizar_coordenada(lat_incra)
                     lat_projeto_norm = self._normalizar_coordenada(lat_projeto)
 
-                    # Verificar se VÉRTICE é idêntico
+                    # Verificar se VÉRTICE é idêntico (comparando strings limpas)
                     vertice_identico = (codigo_incra == codigo_projeto and
                                        long_incra_norm == long_projeto_norm and
                                        lat_incra_norm == lat_projeto_norm and
@@ -1719,17 +1736,17 @@ class VerificadorGeorreferenciamento:
                 projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
 
                 if incra_row and projeto_row:
-                    # Extrair dados SEGMENTO VANTE (colunas 4-6)
-                    cod_seg_incra = incra_row[4] if len(incra_row) > 4 else ""
-                    cod_seg_projeto = projeto_row[4] if len(projeto_row) > 4 else ""
+                    # Extrair e limpar dados SEGMENTO VANTE (colunas 4-6)
+                    cod_seg_incra = self._limpar_string(incra_row[4] if len(incra_row) > 4 else "")
+                    cod_seg_projeto = self._limpar_string(projeto_row[4] if len(projeto_row) > 4 else "")
 
-                    azim_incra = incra_row[5] if len(incra_row) > 5 else ""
-                    azim_projeto = projeto_row[5] if len(projeto_row) > 5 else ""
+                    azim_incra = self._limpar_string(incra_row[5] if len(incra_row) > 5 else "")
+                    azim_projeto = self._limpar_string(projeto_row[5] if len(projeto_row) > 5 else "")
 
-                    dist_incra = incra_row[6] if len(incra_row) > 6 else ""
-                    dist_projeto = projeto_row[6] if len(projeto_row) > 6 else ""
+                    dist_incra = self._limpar_string(incra_row[6] if len(incra_row) > 6 else "")
+                    dist_projeto = self._limpar_string(projeto_row[6] if len(projeto_row) > 6 else "")
 
-                    # Verificar se SEGMENTO VANTE é idêntico
+                    # Verificar se SEGMENTO VANTE é idêntico (comparando strings limpas)
                     segmento_identico = (cod_seg_incra == cod_seg_projeto and
                                         azim_incra == azim_projeto and
                                         dist_incra == dist_projeto)

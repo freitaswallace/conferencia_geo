@@ -727,6 +727,76 @@ class VerificadorGeorreferenciamento:
             "\n   ⚠️ NUNCA pare de ler na página 1!",
             "\n   ⚠️ SEMPRE verifique se há mais páginas!",
             "\n   ⚠️ Se você extraiu 25 vértices, PROCURE O 26º!",
+            "\n   ",
+            "\n   🚨🚨🚨 ATENÇÃO ESPECIAL - O ÚLTIMO CÓDIGO:",
+            "\n   ⚠️⚠️⚠️ O ÚLTIMO CÓDIGO É O MAIS IMPORTANTE! ⚠️⚠️⚠️",
+            "\n   ",
+            "\n   • Você DEVE encontrar e extrair o ÚLTIMO código da tabela",
+            "\n   • Procure na SEGUNDA PÁGINA do INCRA!",
+            "\n   • O último código tem o NÚMERO MAIS ALTO",
+            "\n   • Exemplo: Se tem AKE-P-3586, esse é o ÚLTIMO (3586 é o maior)",
+            "\n   • NÃO PODE FALTAR! Isso é CRÍTICO!",
+            "\n   ",
+            "\n   ✅ VERIFICAÇÃO DO ÚLTIMO CÓDIGO:",
+            "\n   1. Qual é o último código que extraí? _______",
+            "\n   2. Esse código tem o número mais alto da tabela? SIM/NÃO",
+            "\n   3. Verifiquei a segunda página do INCRA? SIM/NÃO",
+            "\n   4. Há alguma linha depois desse código? SIM/NÃO",
+            "\n   ",
+            "\n   🔴 Se alguma resposta não estiver certa, PROCURE NOVAMENTE!",
+            "\n",
+            "\n5.5 USE O OCR DO GEMINI PARA NÚMEROS:",
+            "\n   ",
+            "\n   🎯 INSTRUÇÕES ESPECIAIS PARA RECONHECIMENTO DE NÚMEROS:",
+            "\n   ",
+            "\n   Você tem capacidade multimodal (visão) do Gemini!",
+            "\n   USE essa capacidade para ler números com PRECISÃO MÁXIMA!",
+            "\n   ",
+            "\n   📍 MÉTODO DE OCR PARA COORDENADAS:",
+            "\n   ",
+            "\n   1️⃣ LONGITUDE (coluna 2):",
+            "\n   • FOQUE na coluna de Longitude",
+            "\n   • Faça OCR caractere por caractere",
+            "\n   • Formato: -48°34'14,782\"",
+            "\n   • CUIDADO com números similares: 3≠8, 1≠7, 4≠9, 5≠6",
+            "\n   • Os segundos têm 3 casas decimais: X,XXX",
+            "\n   • Exemplos de erros comuns:",
+            "\n     - 14,782 lido como 14,78 ← ERRADO! Faltam dígitos!",
+            "\n     - 34 lido como 39 ← ERRADO! Confundiu 4 com 9!",
+            "\n   ",
+            "\n   2️⃣ LATITUDE (coluna 3):",
+            "\n   • FOQUE na coluna de Latitude",
+            "\n   • Faça OCR caractere por caractere",
+            "\n   • Formato: -20°50'45,291\"",
+            "\n   • CUIDADO com números similares: 0≠8, 5≠6, 2≠7",
+            "\n   • Os segundos têm 3 casas decimais: X,XXX",
+            "\n   • Exemplos de erros comuns:",
+            "\n     - 45,291 lido como 45,29 ← ERRADO! Faltam dígitos!",
+            "\n     - 50 lido como 58 ← ERRADO! Confundiu 0 com 8!",
+            "\n   ",
+            "\n   3️⃣ ALTITUDE (m) (coluna 4):",
+            "\n   🚨🚨🚨 ALTITUDE É A QUE MAIS TEM ERRO! ATENÇÃO MÁXIMA! 🚨🚨🚨",
+            "\n   ",
+            "\n   • FOQUE EXCLUSIVAMENTE na coluna 'Altitude(m)'",
+            "\n   • USE OCR com máxima atenção",
+            "\n   • Formato: XXX,XX (3 dígitos, vírgula, 2 decimais)",
+            "\n   • Exemplos: 532,78 ou 533,92 ou 534,14",
+            "\n   • CUIDADO com números similares:",
+            "\n     - 5 vs 6 (muito similares!)",
+            "\n     - 3 vs 8 (muito similares!)",
+            "\n     - 2 vs 7 (muito similares!)",
+            "\n     - 1 vs 7 (muito similares!)",
+            "\n   • SEMPRE tem 2 casas decimais após a vírgula",
+            "\n   • Exemplos de erros comuns:",
+            "\n     - 532,78 lido como 537,78 ← Confundiu 2 com 7!",
+            "\n     - 533,92 lido como 538,92 ← Confundiu 3 com 8!",
+            "\n     - 534,14 lido como 534,1 ← Falta o último dígito!",
+            "\n   ",
+            "\n   💡 DICA IMPORTANTE:",
+            "\n   • Para cada número, OLHE COM ATENÇÃO",
+            "\n   • Compare com números similares na mesma tabela",
+            "\n   • Se tiver dúvida entre 532 e 537, veja outros números",
+            "\n   • Use contexto: altitudes geralmente variam pouco (530-540)",
             "\n",
             "\n6. MANTENHA A FORMATAÇÃO:",
             "\n   • Use espaços/tabs para alinhar colunas",
@@ -892,10 +962,66 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   🚨 CRÍTICO: Extraia TODOS os vértices da tabela!")
             prompt.append("\n   • Se a tabela tem 26 vértices, liste os 26!")
             prompt.append("\n   • Se a tabela tem 30 vértices, liste os 30!")
-            prompt.append("\n   • O ÚLTIMO VÉRTICE é tão importante quanto o primeiro!")
             prompt.append("\n   • NÃO omita nenhum vértice")
             prompt.append("\n   • NÃO pare em 3-4 vértices")
             prompt.append("\n   • Leia até o FIM da tabela!")
+            prompt.append("\n   ")
+            prompt.append("\n   🚨🚨🚨 ATENÇÃO ESPECIAL - O ÚLTIMO CÓDIGO DO PROJETO:")
+            prompt.append("\n   ⚠️⚠️⚠️ O ÚLTIMO CÓDIGO É O MAIS IMPORTANTE! ⚠️⚠️⚠️")
+            prompt.append("\n   ")
+            prompt.append("\n   • Você tem a lista de códigos do INCRA")
+            prompt.append("\n   • O ÚLTIMO código dessa lista é o que você DEVE encontrar no PROJETO")
+            prompt.append("\n   • Exemplo: Se o último do INCRA é AKE-P-3586, PROCURE no PROJETO")
+            prompt.append("\n   • NÃO PODE FALTAR! Isso é CRÍTICO!")
+            prompt.append("\n   • Se não encontrou, PROCURE NOVAMENTE na tabela do PROJETO")
+            prompt.append("\n")
+            prompt.append("\n5.5 USE O OCR DO GEMINI PARA NÚMEROS DO PROJETO:")
+            prompt.append("\n   ")
+            prompt.append("\n   🎯 INSTRUÇÕES ESPECIAIS PARA RECONHECIMENTO DE NÚMEROS:")
+            prompt.append("\n   ")
+            prompt.append("\n   Você tem capacidade multimodal (visão) do Gemini!")
+            prompt.append("\n   USE essa capacidade para ler números com PRECISÃO MÁXIMA!")
+            prompt.append("\n   ")
+            prompt.append("\n   📍 MÉTODO DE OCR PARA COORDENADAS DO PROJETO:")
+            prompt.append("\n   ")
+            prompt.append("\n   1️⃣ LONGITUDE:")
+            prompt.append("\n   • FOQUE na coluna de Longitude da tabela")
+            prompt.append("\n   • Faça OCR caractere por caractere")
+            prompt.append("\n   • Formato: 48°34'14,782\" W (SEM sinal -, COM letra W)")
+            prompt.append("\n   • CUIDADO com números similares: 3≠8, 1≠7, 4≠9, 5≠6")
+            prompt.append("\n   • Os segundos têm 3 casas decimais: X,XXX")
+            prompt.append("\n   • NÃO confunda: 14,782 ≠ 14,78")
+            prompt.append("\n   ")
+            prompt.append("\n   2️⃣ LATITUDE:")
+            prompt.append("\n   • FOQUE na coluna de Latitude da tabela")
+            prompt.append("\n   • Faça OCR caractere por caractere")
+            prompt.append("\n   • Formato: 20°50'45,291\" S (SEM sinal -, COM letra S)")
+            prompt.append("\n   • CUIDADO com números similares: 0≠8, 5≠6, 2≠7")
+            prompt.append("\n   • Os segundos têm 3 casas decimais: X,XXX")
+            prompt.append("\n   • NÃO confunda: 45,291 ≠ 45,29")
+            prompt.append("\n   ")
+            prompt.append("\n   3️⃣ ALTITUDE (m):")
+            prompt.append("\n   🚨🚨🚨 ALTITUDE É A QUE MAIS TEM ERRO! ATENÇÃO MÁXIMA! 🚨🚨🚨")
+            prompt.append("\n   ")
+            prompt.append("\n   • FOQUE EXCLUSIVAMENTE na coluna Altitude da tabela")
+            prompt.append("\n   • USE OCR com máxima atenção")
+            prompt.append("\n   • Formato: XXX,XX (3 dígitos, vírgula, 2 decimais)")
+            prompt.append("\n   • Exemplos: 532,78 ou 533,92 ou 534,14")
+            prompt.append("\n   • CUIDADO com números similares:")
+            prompt.append("\n     - 5 vs 6 (confusão comum!)")
+            prompt.append("\n     - 3 vs 8 (confusão comum!)")
+            prompt.append("\n     - 2 vs 7 (confusão comum!)")
+            prompt.append("\n     - 1 vs 7 (confusão comum!)")
+            prompt.append("\n   • SEMPRE tem 2 casas decimais após a vírgula")
+            prompt.append("\n   • Erros comuns:")
+            prompt.append("\n     - 532,78 lido como 537,78 ← Confundiu 2 com 7!")
+            prompt.append("\n     - 533,92 lido como 538,92 ← Confundiu 3 com 8!")
+            prompt.append("\n     - 534,14 lido como 534,1 ← Falta dígito!")
+            prompt.append("\n   ")
+            prompt.append("\n   💡 DICA: Compare com os valores do INCRA")
+            prompt.append("\n   • Altitude do INCRA e PROJETO devem ser IGUAIS ou muito próximas")
+            prompt.append("\n   • Se INCRA tem 532,78 e você leu 537,78 no PROJETO → ERRO!")
+            prompt.append("\n   • Use isso para validar sua leitura")
             prompt.append("\n")
             prompt.append("\n💡 EXEMPLO CORRETO DE EXTRAÇÃO:")
             prompt.append("\nVértice AKE-V-0166:")

@@ -1443,16 +1443,22 @@ class VerificadorGeorreferenciamento:
         """
         Normaliza coordenadas para comparação, ignorando diferenças de formato.
         Remove "-" do INCRA e "W"/"S" do projeto para comparação equivalente.
+        Normaliza caracteres Unicode especiais (prime → aspas normais).
 
         Exemplos:
         - INCRA: "-48°34'14,782"" → "48°34'14,782""
-        - PROJETO: "48°34'14,782" W" → "48°34'14,782""
+        - PROJETO: "48°34′14,782" W" → "48°34'14,782""
         """
         if not coord:
             return ""
 
         # Converter para string e remover espaços em branco
         coord = str(coord).strip()
+
+        # Normalizar caracteres Unicode especiais
+        # ′ (U+2032 prime) → ' (aspas simples)
+        # ″ (U+2033 double prime) → " (aspas duplas)
+        coord = coord.replace("′", "'").replace("″", '"')
 
         # Remover "-" do início (INCRA)
         if coord.startswith("-"):

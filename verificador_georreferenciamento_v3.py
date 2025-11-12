@@ -1410,6 +1410,33 @@ class VerificadorGeorreferenciamento:
         prompt.append(instrucoes_saida)
         return prompt
 
+    def _normalizar_coordenada(self, coord: str) -> str:
+        """
+        Normaliza coordenadas para comparação, ignorando diferenças de formato.
+        Remove "-" do INCRA e "W"/"S" do projeto para comparação equivalente.
+
+        Exemplos:
+        - INCRA: "-48°34'14,782"" → "48°34'14,782""
+        - PROJETO: "48°34'14,782" W" → "48°34'14,782""
+        """
+        if not coord:
+            return ""
+
+        # Remover espaços em branco
+        coord = coord.strip()
+
+        # Remover "-" do início (INCRA)
+        if coord.startswith("-"):
+            coord = coord[1:]
+
+        # Remover " W" ou " S" do final (PROJETO)
+        coord = coord.replace(" W", "").replace(" S", "")
+
+        # Remover aspas e espaços extras
+        coord = coord.strip().strip('"').strip("'")
+
+        return coord
+
     def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
         """
         Constrói relatório HTML comparando dados estruturados (nova versão V3).
@@ -1543,17 +1570,19 @@ class VerificadorGeorreferenciamento:
             <tbody>
 """)
 
-            # Comparar linha por linha
+            # ===== SEÇÃO 1: COMPARAÇÃO DE VÉRTICE =====
             max_rows = max(num_vertices_incra, num_vertices_projeto)
-            diferencas = 0
-            identicos = 0
+            diferencas_vertice = 0
+            identicos_vertice = 0
+            diferencas_segmento = 0
+            identicos_segmento = 0
 
             for i in range(max_rows):
                 incra_row = self.incra_data['data'][i] if i < num_vertices_incra else None
                 projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
 
                 if incra_row and projeto_row:
-                    # Extrair dados
+                    # Extrair dados VÉRTICE (colunas 0-3)
                     codigo_incra = incra_row[0] if len(incra_row) > 0 else ""
                     codigo_projeto = projeto_row[0] if len(projeto_row) > 0 else ""
 
@@ -1566,41 +1595,48 @@ class VerificadorGeorreferenciamento:
                     alt_incra = incra_row[3] if len(incra_row) > 3 else ""
                     alt_projeto = projeto_row[3] if len(projeto_row) > 3 else ""
 
-                    # Verificar se são idênticos
-                    identico = (codigo_incra == codigo_projeto and
-                               long_incra == long_projeto and
-                               lat_incra == lat_projeto and
-                               alt_incra == alt_projeto)
+                    # Normalizar coordenadas para comparação
+                    long_incra_norm = self._normalizar_coordenada(long_incra)
+                    long_projeto_norm = self._normalizar_coordenada(long_projeto)
 
-                    if identico:
-                        status_class = "identico"
-                        status_texto = '<span class="status-ok">✅ IDÊNTICO</span>'
-                        identicos += 1
+                    lat_incra_norm = self._normalizar_coordenada(lat_incra)
+                    lat_projeto_norm = self._normalizar_coordenada(lat_projeto)
+
+                    # Verificar se VÉRTICE é idêntico
+                    vertice_identico = (codigo_incra == codigo_projeto and
+                                       long_incra_norm == long_projeto_norm and
+                                       lat_incra_norm == lat_projeto_norm and
+                                       alt_incra == alt_projeto)
+
+                    if vertice_identico:
+                        status_class_vertice = "identico"
+                        status_texto_vertice = '<span class="status-ok">✅ IDÊNTICO</span>'
+                        identicos_vertice += 1
                     else:
-                        status_class = "diferente"
-                        status_texto = '<span class="status-erro">❌ DIFERENTE</span>'
-                        diferencas += 1
+                        status_class_vertice = "diferente"
+                        status_texto_vertice = '<span class="status-erro">❌ DIFERENTE</span>'
+                        diferencas_vertice += 1
 
-                    # Adicionar linhas da tabela
+                    # Adicionar linhas VÉRTICE na tabela
                     html.append(f"""
-                <tr class="{status_class}">
+                <tr class="{status_class_vertice}">
                     <td rowspan="4" style="text-align: center; vertical-align: middle; font-weight: bold;">#{i+1}</td>
                     <td><strong>Código</strong></td>
                     <td>{codigo_incra}</td>
                     <td>{codigo_projeto}</td>
-                    <td rowspan="4" style="text-align: center; vertical-align: middle;">{status_texto}</td>
+                    <td rowspan="4" style="text-align: center; vertical-align: middle;">{status_texto_vertice}</td>
                 </tr>
-                <tr class="{status_class}">
+                <tr class="{status_class_vertice}">
                     <td><strong>Longitude</strong></td>
                     <td>{long_incra}</td>
                     <td>{long_projeto}</td>
                 </tr>
-                <tr class="{status_class}">
+                <tr class="{status_class_vertice}">
                     <td><strong>Latitude</strong></td>
                     <td>{lat_incra}</td>
                     <td>{lat_projeto}</td>
                 </tr>
-                <tr class="{status_class}">
+                <tr class="{status_class_vertice}">
                     <td><strong>Altitude</strong></td>
                     <td>{alt_incra}</td>
                     <td>{alt_projeto}</td>
@@ -1608,7 +1644,7 @@ class VerificadorGeorreferenciamento:
 """)
 
                 elif incra_row and not projeto_row:
-                    diferencas += 1
+                    diferencas_vertice += 1
                     html.append(f"""
                 <tr class="diferente">
                     <td style="text-align: center; font-weight: bold;">#{i+1}</td>
@@ -1618,7 +1654,7 @@ class VerificadorGeorreferenciamento:
 """)
 
                 elif not incra_row and projeto_row:
-                    diferencas += 1
+                    diferencas_vertice += 1
                     html.append(f"""
                 <tr class="diferente">
                     <td style="text-align: center; font-weight: bold;">#{i+1}</td>
@@ -1632,19 +1668,126 @@ class VerificadorGeorreferenciamento:
         </table>
 """)
 
-            # Resumo
-            resultado_final = "🎉 TODOS OS VÉRTICES ESTÃO IDÊNTICOS!" if diferencas == 0 else "⚠️ EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS"
-            resultado_cor = "#28a745" if diferencas == 0 else "#dc3545"
+            # ===== SEÇÃO 2: COMPARAÇÃO DE SEGMENTO VANTE =====
+            html.append("""
+        <h2>🔄 COMPARAÇÃO: SEGMENTO VANTE</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Vértice</th>
+                    <th style="width: 120px;">Campo</th>
+                    <th>INCRA</th>
+                    <th>PROJETO</th>
+                    <th style="width: 100px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+""")
+
+            for i in range(max_rows):
+                incra_row = self.incra_data['data'][i] if i < num_vertices_incra else None
+                projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
+
+                if incra_row and projeto_row:
+                    # Extrair dados SEGMENTO VANTE (colunas 4-6)
+                    cod_seg_incra = incra_row[4] if len(incra_row) > 4 else ""
+                    cod_seg_projeto = projeto_row[4] if len(projeto_row) > 4 else ""
+
+                    azim_incra = incra_row[5] if len(incra_row) > 5 else ""
+                    azim_projeto = projeto_row[5] if len(projeto_row) > 5 else ""
+
+                    dist_incra = incra_row[6] if len(incra_row) > 6 else ""
+                    dist_projeto = projeto_row[6] if len(projeto_row) > 6 else ""
+
+                    # Verificar se SEGMENTO VANTE é idêntico
+                    segmento_identico = (cod_seg_incra == cod_seg_projeto and
+                                        azim_incra == azim_projeto and
+                                        dist_incra == dist_projeto)
+
+                    if segmento_identico:
+                        status_class_seg = "identico"
+                        status_texto_seg = '<span class="status-ok">✅ IDÊNTICO</span>'
+                        identicos_segmento += 1
+                    else:
+                        status_class_seg = "diferente"
+                        status_texto_seg = '<span class="status-erro">❌ DIFERENTE</span>'
+                        diferencas_segmento += 1
+
+                    # Adicionar linhas SEGMENTO VANTE na tabela
+                    html.append(f"""
+                <tr class="{status_class_seg}">
+                    <td rowspan="3" style="text-align: center; vertical-align: middle; font-weight: bold;">#{i+1}</td>
+                    <td><strong>Código</strong></td>
+                    <td>{cod_seg_incra}</td>
+                    <td>{cod_seg_projeto}</td>
+                    <td rowspan="3" style="text-align: center; vertical-align: middle;">{status_texto_seg}</td>
+                </tr>
+                <tr class="{status_class_seg}">
+                    <td><strong>Azimute</strong></td>
+                    <td>{azim_incra}</td>
+                    <td>{azim_projeto}</td>
+                </tr>
+                <tr class="{status_class_seg}">
+                    <td><strong>Dist. (m)</strong></td>
+                    <td>{dist_incra}</td>
+                    <td>{dist_projeto}</td>
+                </tr>
+""")
+
+                elif incra_row and not projeto_row:
+                    diferencas_segmento += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ AUSENTE NO PROJETO</strong></td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+                elif not incra_row and projeto_row:
+                    diferencas_segmento += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ EXTRA NO PROJETO</strong></td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+            html.append("""
+            </tbody>
+        </table>
+""")
+
+            # Resumo geral
+            diferencas_total = diferencas_vertice + diferencas_segmento
+            identicos_total = identicos_vertice + identicos_segmento
+            resultado_final = "🎉 TODOS OS DADOS ESTÃO IDÊNTICOS!" if diferencas_total == 0 else "⚠️ EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS"
+            resultado_cor = "#28a745" if diferencas_total == 0 else "#dc3545"
 
             html.append(f"""
         <div class="resumo">
             <h3>📊 RESUMO DA COMPARAÇÃO</h3>
             <p class="destaque">Total de vértices analisados: {max_rows}</p>
-            <p>✅ Vértices idênticos: <strong style="color: #28a745;">{identicos}</strong></p>
-            <p>❌ Vértices diferentes: <strong style="color: #dc3545;">{diferencas}</strong></p>
-            <hr>
-            <p class="destaque" style="color: {resultado_cor};">{resultado_final}</p>
-            {f'<p style="color: #856404;">Por favor, revise os vértices marcados como DIFERENTE na tabela acima.</p>' if diferencas > 0 else ''}
+
+            <h4 style="margin-top: 20px; color: #2c3e50;">📍 VÉRTICE (Código, Longitude, Latitude, Altitude):</h4>
+            <p>✅ Idênticos: <strong style="color: #28a745;">{identicos_vertice}</strong></p>
+            <p>❌ Diferentes: <strong style="color: #dc3545;">{diferencas_vertice}</strong></p>
+
+            <h4 style="margin-top: 20px; color: #2c3e50;">🔄 SEGMENTO VANTE (Código, Azimute, Distância):</h4>
+            <p>✅ Idênticos: <strong style="color: #28a745;">{identicos_segmento}</strong></p>
+            <p>❌ Diferentes: <strong style="color: #dc3545;">{diferencas_segmento}</strong></p>
+
+            <hr style="margin: 20px 0;">
+
+            <h4 style="color: #2c3e50;">🎯 TOTAL GERAL:</h4>
+            <p>✅ Total idênticos: <strong style="color: #28a745;">{identicos_total}</strong></p>
+            <p>❌ Total diferentes: <strong style="color: #dc3545;">{diferencas_total}</strong></p>
+
+            <hr style="margin: 20px 0;">
+            <p class="destaque" style="color: {resultado_cor}; font-size: 1.2em;">{resultado_final}</p>
+            {f'<p style="color: #856404;">Por favor, revise os itens marcados como DIFERENTE nas tabelas acima.</p>' if diferencas_total > 0 else ''}
         </div>
 """)
 

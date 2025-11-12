@@ -745,58 +745,114 @@ class VerificadorGeorreferenciamento:
             "\n   ",
             "\n   🔴 Se alguma resposta não estiver certa, PROCURE NOVAMENTE!",
             "\n",
-            "\n5.5 USE O OCR DO GEMINI PARA NÚMEROS:",
+            "\n5.5 🚨🚨🚨 MÉTODO RIGOROSO DE OCR - LINHA POR LINHA, CÉLULA POR CÉLULA 🚨🚨🚨",
             "\n   ",
-            "\n   🎯 INSTRUÇÕES ESPECIAIS PARA RECONHECIMENTO DE NÚMEROS:",
+            "\n   ⚠️⚠️⚠️ CRÍTICO: A maioria dos erros está nos NÚMEROS! ⚠️⚠️⚠️",
             "\n   ",
-            "\n   Você tem capacidade multimodal (visão) do Gemini!",
-            "\n   USE essa capacidade para ler números com PRECISÃO MÁXIMA!",
+            "\n   📋 PROCESSO OBRIGATÓRIO - SIGA EXATAMENTE:",
             "\n   ",
-            "\n   📍 MÉTODO DE OCR PARA COORDENADAS:",
+            "\n   PARA CADA LINHA DA TABELA:",
             "\n   ",
-            "\n   1️⃣ LONGITUDE (coluna 2):",
-            "\n   • FOQUE na coluna de Longitude",
-            "\n   • Faça OCR caractere por caractere",
-            "\n   • Formato: -48°34'14,782\"",
-            "\n   • CUIDADO com números similares: 3≠8, 1≠7, 4≠9, 5≠6",
-            "\n   • Os segundos têm 3 casas decimais: X,XXX",
-            "\n   • Exemplos de erros comuns:",
-            "\n     - 14,782 lido como 14,78 ← ERRADO! Faltam dígitos!",
-            "\n     - 34 lido como 39 ← ERRADO! Confundiu 4 com 9!",
+            "\n   PASSO 1 - EXTRAIR CÓDIGO (coluna 1):",
+            "\n   └─ Leia o código completo: AKE-X-XXXX",
+            "\n   └─ Anote mentalmente: \"Código = _______\"",
             "\n   ",
-            "\n   2️⃣ LATITUDE (coluna 3):",
-            "\n   • FOQUE na coluna de Latitude",
-            "\n   • Faça OCR caractere por caractere",
-            "\n   • Formato: -20°50'45,291\"",
-            "\n   • CUIDADO com números similares: 0≠8, 5≠6, 2≠7",
-            "\n   • Os segundos têm 3 casas decimais: X,XXX",
-            "\n   • Exemplos de erros comuns:",
-            "\n     - 45,291 lido como 45,29 ← ERRADO! Faltam dígitos!",
-            "\n     - 50 lido como 58 ← ERRADO! Confundiu 0 com 8!",
+            "\n   PASSO 2 - EXTRAIR LONGITUDE (coluna 2):",
+            "\n   🎯 FOQUE EXCLUSIVAMENTE nesta célula!",
             "\n   ",
-            "\n   3️⃣ ALTITUDE (m) (coluna 4):",
-            "\n   🚨🚨🚨 ALTITUDE É A QUE MAIS TEM ERRO! ATENÇÃO MÁXIMA! 🚨🚨🚨",
+            "\n   A. Isole visualmente APENAS a célula de Longitude",
+            "\n   B. Ignore todas as outras colunas temporariamente",
+            "\n   C. Leia DEVAGAR, parte por parte:",
+            "\n      ",
+            "\n      Formato: -48°34'14,782\"",
+            "\n      └─ Sinal: - (tem ou não tem?)",
+            "\n      └─ Graus: __ (2 dígitos)",
+            "\n      └─ Símbolo: °",
+            "\n      └─ Minutos: __ (2 dígitos)",
+            "\n      └─ Apóstrofo: '",
+            "\n      └─ Segundos INTEIROS: __ (2 dígitos)",
+            "\n      └─ Vírgula: ,",
+            "\n      └─ Segundos DECIMAIS: ___ (EXATAMENTE 3 dígitos!)",
+            "\n      └─ Aspas: \"",
             "\n   ",
-            "\n   • FOQUE EXCLUSIVAMENTE na coluna 'Altitude(m)'",
-            "\n   • USE OCR com máxima atenção",
-            "\n   • Formato: XXX,XX (3 dígitos, vírgula, 2 decimais)",
-            "\n   • Exemplos: 532,78 ou 533,92 ou 534,14",
-            "\n   • CUIDADO com números similares:",
-            "\n     - 5 vs 6 (muito similares!)",
-            "\n     - 3 vs 8 (muito similares!)",
-            "\n     - 2 vs 7 (muito similares!)",
-            "\n     - 1 vs 7 (muito similares!)",
-            "\n   • SEMPRE tem 2 casas decimais após a vírgula",
-            "\n   • Exemplos de erros comuns:",
-            "\n     - 532,78 lido como 537,78 ← Confundiu 2 com 7!",
-            "\n     - 533,92 lido como 538,92 ← Confundiu 3 com 8!",
-            "\n     - 534,14 lido como 534,1 ← Falta o último dígito!",
+            "\n   D. Leia OS SEGUNDOS 2 VEZES para confirmar:",
+            "\n      └─ Primeira leitura: __.___",
+            "\n      └─ Segunda leitura: __.___",
+            "\n      └─ São IGUAIS? Se NÃO, leia uma TERCEIRA vez!",
             "\n   ",
-            "\n   💡 DICA IMPORTANTE:",
-            "\n   • Para cada número, OLHE COM ATENÇÃO",
-            "\n   • Compare com números similares na mesma tabela",
-            "\n   • Se tiver dúvida entre 532 e 537, veja outros números",
-            "\n   • Use contexto: altitudes geralmente variam pouco (530-540)",
+            "\n   E. Verifique:",
+            "\n      ✓ Tem EXATAMENTE 3 dígitos após a vírgula?",
+            "\n      ✓ Exemplo: 14,782 (não 14,78!)",
+            "\n   ",
+            "\n   PASSO 3 - EXTRAIR LATITUDE (coluna 3):",
+            "\n   🎯 FOQUE EXCLUSIVAMENTE nesta célula!",
+            "\n   ",
+            "\n   A. Isole visualmente APENAS a célula de Latitude",
+            "\n   B. Ignore todas as outras colunas temporariamente",
+            "\n   C. Leia DEVAGAR, parte por parte:",
+            "\n      ",
+            "\n      Formato: -20°50'45,291\"",
+            "\n      └─ Sinal: - (tem ou não tem?)",
+            "\n      └─ Graus: __ (2 dígitos)",
+            "\n      └─ Símbolo: °",
+            "\n      └─ Minutos: __ (2 dígitos)",
+            "\n      └─ Apóstrofo: '",
+            "\n      └─ Segundos INTEIROS: __ (2 dígitos)",
+            "\n      └─ Vírgula: ,",
+            "\n      └─ Segundos DECIMAIS: ___ (EXATAMENTE 3 dígitos!)",
+            "\n      └─ Aspas: \"",
+            "\n   ",
+            "\n   D. Leia OS SEGUNDOS 2 VEZES para confirmar:",
+            "\n      └─ Primeira leitura: __.___",
+            "\n      └─ Segunda leitura: __.___",
+            "\n      └─ São IGUAIS? Se NÃO, leia uma TERCEIRA vez!",
+            "\n   ",
+            "\n   E. Verifique:",
+            "\n      ✓ Tem EXATAMENTE 3 dígitos após a vírgula?",
+            "\n      ✓ Exemplo: 45,291 (não 45,29!)",
+            "\n   ",
+            "\n   PASSO 4 - EXTRAIR ALTITUDE (coluna 4):",
+            "\n   🚨🚨🚨 ESTA É A MAIS DIFÍCIL! ATENÇÃO MÁXIMA! 🚨🚨🚨",
+            "\n   ",
+            "\n   A. Isole visualmente APENAS a célula de Altitude",
+            "\n   B. Ignore COMPLETAMENTE as outras colunas",
+            "\n   C. Leia dígito por dígito:",
+            "\n      ",
+            "\n      Formato: XXX,XX",
+            "\n      └─ Centenas: _ (é 5 ou 6? é 3 ou 8?)",
+            "\n      └─ Dezenas: _ (é 3 ou 8? é 2 ou 7?)",
+            "\n      └─ Unidades: _ (é 2 ou 7? é 4 ou 9?)",
+            "\n      └─ Vírgula: ,",
+            "\n      └─ Decimal 1: _ (é 7 ou 1?)",
+            "\n      └─ Decimal 2: _ (SEMPRE tem! não omita!)",
+            "\n   ",
+            "\n   D. Leia O NÚMERO COMPLETO 3 VEZES:",
+            "\n      └─ 1ª leitura: ___,__",
+            "\n      └─ 2ª leitura: ___,__",
+            "\n      └─ 3ª leitura: ___,__",
+            "\n      └─ As 3 são IGUAIS? Se NÃO, leia MAIS vezes!",
+            "\n   ",
+            "\n   E. Pares confusos - MUITO CUIDADO:",
+            "\n      • 5 ou 6? → Olhe o formato da curva",
+            "\n      • 3 ou 8? → 8 tem dois círculos, 3 tem um",
+            "\n      • 2 ou 7? → 7 tem traço horizontal em cima",
+            "\n      • 1 ou 7? → 1 é reto, 7 tem ângulo",
+            "\n   ",
+            "\n   F. Verificação cruzada:",
+            "\n      • Compare com altitude da linha anterior",
+            "\n      • Altitudes variam pouco: 530-540 geralmente",
+            "\n      • Se anterior era 532 e você leu 597 → ERRO!",
+            "\n   ",
+            "\n   PASSO 5 - ANOTAR A LINHA COMPLETA:",
+            "\n   └─ Código: _______",
+            "\n   └─ Longitude: -__°__'__,___\"",
+            "\n   └─ Latitude: -__°__'__,___\"",
+            "\n   └─ Altitude: ___,__",
+            "\n   ",
+            "\n   PASSO 6 - REPETIR PARA A PRÓXIMA LINHA",
+            "\n   ",
+            "\n   🔴 NÃO TENTE LER TUDO DE UMA VEZ!",
+            "\n   🟢 PROCESSE LINHA POR LINHA, CÉLULA POR CÉLULA!",
             "\n",
             "\n6. MANTENHA A FORMATAÇÃO:",
             "\n   • Use espaços/tabs para alinhar colunas",
@@ -975,53 +1031,108 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • NÃO PODE FALTAR! Isso é CRÍTICO!")
             prompt.append("\n   • Se não encontrou, PROCURE NOVAMENTE na tabela do PROJETO")
             prompt.append("\n")
-            prompt.append("\n5.5 USE O OCR DO GEMINI PARA NÚMEROS DO PROJETO:")
+            prompt.append("\n5.5 🚨🚨🚨 MÉTODO RIGOROSO DE OCR - PROJETO (LINHA POR LINHA) 🚨🚨🚨")
             prompt.append("\n   ")
-            prompt.append("\n   🎯 INSTRUÇÕES ESPECIAIS PARA RECONHECIMENTO DE NÚMEROS:")
+            prompt.append("\n   ⚠️⚠️⚠️ CRÍTICO: Use o MESMO método rigoroso do INCRA! ⚠️⚠️⚠️")
             prompt.append("\n   ")
-            prompt.append("\n   Você tem capacidade multimodal (visão) do Gemini!")
-            prompt.append("\n   USE essa capacidade para ler números com PRECISÃO MÁXIMA!")
+            prompt.append("\n   📋 PROCESSO - Para cada código da sua lista do INCRA:")
             prompt.append("\n   ")
-            prompt.append("\n   📍 MÉTODO DE OCR PARA COORDENADAS DO PROJETO:")
+            prompt.append("\n   1. Pegue o código (ex: AKE-V-0166)")
+            prompt.append("\n   2. PROCURE esse código na tabela do PROJETO")
+            prompt.append("\n   3. Quando encontrar a linha, extraia CÉLULA POR CÉLULA:")
             prompt.append("\n   ")
-            prompt.append("\n   1️⃣ LONGITUDE:")
-            prompt.append("\n   • FOQUE na coluna de Longitude da tabela")
-            prompt.append("\n   • Faça OCR caractere por caractere")
-            prompt.append("\n   • Formato: 48°34'14,782\" W (SEM sinal -, COM letra W)")
-            prompt.append("\n   • CUIDADO com números similares: 3≠8, 1≠7, 4≠9, 5≠6")
-            prompt.append("\n   • Os segundos têm 3 casas decimais: X,XXX")
-            prompt.append("\n   • NÃO confunda: 14,782 ≠ 14,78")
+            prompt.append("\n   CÉLULA 2 - LONGITUDE:")
+            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
             prompt.append("\n   ")
-            prompt.append("\n   2️⃣ LATITUDE:")
-            prompt.append("\n   • FOQUE na coluna de Latitude da tabela")
-            prompt.append("\n   • Faça OCR caractere por caractere")
-            prompt.append("\n   • Formato: 20°50'45,291\" S (SEM sinal -, COM letra S)")
-            prompt.append("\n   • CUIDADO com números similares: 0≠8, 5≠6, 2≠7")
-            prompt.append("\n   • Os segundos têm 3 casas decimais: X,XXX")
-            prompt.append("\n   • NÃO confunda: 45,291 ≠ 45,29")
+            prompt.append("\n   Formato: 48°34'14,782\" W (SEM sinal -, TEM letra W)")
             prompt.append("\n   ")
-            prompt.append("\n   3️⃣ ALTITUDE (m):")
-            prompt.append("\n   🚨🚨🚨 ALTITUDE É A QUE MAIS TEM ERRO! ATENÇÃO MÁXIMA! 🚨🚨🚨")
+            prompt.append("\n   A. Leia parte por parte:")
+            prompt.append("\n      └─ Graus: __ (2 dígitos)")
+            prompt.append("\n      └─ Símbolo: °")
+            prompt.append("\n      └─ Minutos: __ (2 dígitos)")
+            prompt.append("\n      └─ Apóstrofo: '")
+            prompt.append("\n      └─ Segundos INTEIROS: __ (2 dígitos)")
+            prompt.append("\n      └─ Vírgula: ,")
+            prompt.append("\n      └─ Segundos DECIMAIS: ___ (3 dígitos!)")
+            prompt.append("\n      └─ Aspas: \"")
+            prompt.append("\n      └─ Direção: W")
             prompt.append("\n   ")
-            prompt.append("\n   • FOQUE EXCLUSIVAMENTE na coluna Altitude da tabela")
-            prompt.append("\n   • USE OCR com máxima atenção")
-            prompt.append("\n   • Formato: XXX,XX (3 dígitos, vírgula, 2 decimais)")
-            prompt.append("\n   • Exemplos: 532,78 ou 533,92 ou 534,14")
-            prompt.append("\n   • CUIDADO com números similares:")
-            prompt.append("\n     - 5 vs 6 (confusão comum!)")
-            prompt.append("\n     - 3 vs 8 (confusão comum!)")
-            prompt.append("\n     - 2 vs 7 (confusão comum!)")
-            prompt.append("\n     - 1 vs 7 (confusão comum!)")
-            prompt.append("\n   • SEMPRE tem 2 casas decimais após a vírgula")
-            prompt.append("\n   • Erros comuns:")
-            prompt.append("\n     - 532,78 lido como 537,78 ← Confundiu 2 com 7!")
-            prompt.append("\n     - 533,92 lido como 538,92 ← Confundiu 3 com 8!")
-            prompt.append("\n     - 534,14 lido como 534,1 ← Falta dígito!")
+            prompt.append("\n   B. Leia os segundos 2-3 VEZES para confirmar")
+            prompt.append("\n   C. Verifique: Tem 3 dígitos após vírgula?")
             prompt.append("\n   ")
-            prompt.append("\n   💡 DICA: Compare com os valores do INCRA")
-            prompt.append("\n   • Altitude do INCRA e PROJETO devem ser IGUAIS ou muito próximas")
-            prompt.append("\n   • Se INCRA tem 532,78 e você leu 537,78 no PROJETO → ERRO!")
-            prompt.append("\n   • Use isso para validar sua leitura")
+            prompt.append("\n   D. 🔍 VALIDAÇÃO CRUZADA:")
+            prompt.append("\n      • Compare com INCRA (mesmo código)")
+            prompt.append("\n      • INCRA tinha: -48°34'14,782\"")
+            prompt.append("\n      • PROJETO deve ter: 48°34'14,782\" W")
+            prompt.append("\n      • Os NÚMEROS devem ser IDÊNTICOS!")
+            prompt.append("\n      • Se diferente → VOCÊ ERROU! Leia novamente!")
+            prompt.append("\n   ")
+            prompt.append("\n   CÉLULA 3 - LATITUDE:")
+            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
+            prompt.append("\n   ")
+            prompt.append("\n   Formato: 20°50'45,291\" S (SEM sinal -, TEM letra S)")
+            prompt.append("\n   ")
+            prompt.append("\n   A. Leia parte por parte:")
+            prompt.append("\n      └─ Graus: __ (2 dígitos)")
+            prompt.append("\n      └─ Símbolo: °")
+            prompt.append("\n      └─ Minutos: __ (2 dígitos)")
+            prompt.append("\n      └─ Apóstrofo: '")
+            prompt.append("\n      └─ Segundos INTEIROS: __ (2 dígitos)")
+            prompt.append("\n      └─ Vírgula: ,")
+            prompt.append("\n      └─ Segundos DECIMAIS: ___ (3 dígitos!)")
+            prompt.append("\n      └─ Aspas: \"")
+            prompt.append("\n      └─ Direção: S")
+            prompt.append("\n   ")
+            prompt.append("\n   B. Leia os segundos 2-3 VEZES para confirmar")
+            prompt.append("\n   C. Verifique: Tem 3 dígitos após vírgula?")
+            prompt.append("\n   ")
+            prompt.append("\n   D. 🔍 VALIDAÇÃO CRUZADA:")
+            prompt.append("\n      • Compare com INCRA (mesmo código)")
+            prompt.append("\n      • INCRA tinha: -20°50'45,291\"")
+            prompt.append("\n      • PROJETO deve ter: 20°50'45,291\" S")
+            prompt.append("\n      • Os NÚMEROS devem ser IDÊNTICOS!")
+            prompt.append("\n      • Se diferente → VOCÊ ERROU! Leia novamente!")
+            prompt.append("\n   ")
+            prompt.append("\n   CÉLULA 4 - ALTITUDE:")
+            prompt.append("\n   🚨🚨🚨 ESTA É A MAIS DIFÍCIL! ATENÇÃO MÁXIMA! 🚨🚨🚨")
+            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
+            prompt.append("\n   ")
+            prompt.append("\n   Formato: XXX,XX")
+            prompt.append("\n   ")
+            prompt.append("\n   A. Leia dígito por dígito:")
+            prompt.append("\n      └─ Centenas: _ (5 ou 6? 3 ou 8?)")
+            prompt.append("\n      └─ Dezenas: _ (3 ou 8? 2 ou 7?)")
+            prompt.append("\n      └─ Unidades: _ (2 ou 7? 4 ou 9?)")
+            prompt.append("\n      └─ Vírgula: ,")
+            prompt.append("\n      └─ Decimal 1: _")
+            prompt.append("\n      └─ Decimal 2: _ (não omita!)")
+            prompt.append("\n   ")
+            prompt.append("\n   B. Leia 3 VEZES:")
+            prompt.append("\n      └─ 1ª: ___,__")
+            prompt.append("\n      └─ 2ª: ___,__")
+            prompt.append("\n      └─ 3ª: ___,__")
+            prompt.append("\n      └─ Iguais? Se não, leia mais!")
+            prompt.append("\n   ")
+            prompt.append("\n   C. Pares confusos:")
+            prompt.append("\n      • 5 ou 6? → forma da curva")
+            prompt.append("\n      • 3 ou 8? → 8=dois círculos, 3=um")
+            prompt.append("\n      • 2 ou 7? → 7=traço em cima")
+            prompt.append("\n   ")
+            prompt.append("\n   D. 🔍🔍🔍 VALIDAÇÃO CRUZADA (CRÍTICA):")
+            prompt.append("\n      • Compare com INCRA (mesmo código)")
+            prompt.append("\n      • INCRA e PROJETO devem ter altitude IGUAL ou MUITO próxima")
+            prompt.append("\n      • Diferença máxima: ±5 metros")
+            prompt.append("\n      • Exemplo:")
+            prompt.append("\n        - INCRA: 532,78 → PROJETO deve ser ~532,78")
+            prompt.append("\n        - Se você leu 597,78 → ERRO! (diferença de 65m!)")
+            prompt.append("\n        - Se você leu 537,78 → Provavelmente ERRO!")
+            prompt.append("\n        - Releia com mais cuidado!")
+            prompt.append("\n   ")
+            prompt.append("\n   4. Repita para o próximo código da lista")
+            prompt.append("\n   ")
+            prompt.append("\n   🟢 DICA FINAL: Use INCRA para VALIDAR PROJETO!")
+            prompt.append("\n   • Mesmos códigos = mesmas coordenadas")
+            prompt.append("\n   • Se diferença grande → você errou no OCR")
             prompt.append("\n")
             prompt.append("\n💡 EXEMPLO CORRETO DE EXTRAÇÃO:")
             prompt.append("\nVértice AKE-V-0166:")
@@ -1307,10 +1418,9 @@ class VerificadorGeorreferenciamento:
             "\n</thead>"
             "\n<tbody>"
             "\n    <tr>"
-            "\n        <td><strong>V1</strong></td>"
-            "\n        <td>[E=XXX N=YYY]</td>"
-            "\n        <td>[E=XXX N=YYY]</td>"
-            "\n        <td>[E=XXX N=YYY/N/A]</td>"
+            "\n        <td><strong>V1 (AKE-V-XXXX)</strong></td>"
+            "\n        <td>Long: -XX°XX'XX,XXX\"<br>Lat: -XX°XX'XX,XXX\"<br>Alt: XXX,XX</td>"
+            "\n        <td>Long: XX°XX'XX,XXX\" W<br>Lat: XX°XX'XX,XXX\" S<br>Alt: XXX,XX</td>"
             "\n        <td style='text-align:center;'><span class='status-ok'>✅</span></td>"
             "\n    </tr>"
             "\n    <!-- ADICIONE UMA LINHA PARA CADA VÉRTICE (V2, V3, V4... até o último!) -->"

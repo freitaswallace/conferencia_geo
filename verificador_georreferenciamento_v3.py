@@ -293,26 +293,55 @@ class VerificadorGeorreferenciamento:
         Returns:
             Tupla (caminho_excel, dados_dict)
         """
-        api_key = self.api_key.get().strip()
+        try:
+            api_key = self.api_key.get().strip()
 
-        # Criar diretório temporário para Excel se não existir
-        output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
-        output_dir.mkdir(exist_ok=True)
+            # Criar diretório temporário para Excel se não existir
+            # Usa tempfile.gettempdir() que é multiplataforma (Windows/Linux/Mac)
+            output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
 
-        # Definir nome do arquivo Excel
-        pdf_name = Path(pdf_path).stem
-        excel_path = output_dir / f"{pdf_name}_extraido.xlsx"
+            # Criar diretório com permissões adequadas
+            output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Extrair dados usando função apropriada
-        if tipo == "incra":
-            dados = extrair_memorial_incra(Path(pdf_path), api_key)
-        else:
-            dados = extract_table_from_pdf(pdf_path, api_key)
+            # Verificar se o diretório foi criado
+            if not output_dir.exists():
+                raise RuntimeError(f"Não foi possível criar o diretório: {output_dir}")
 
-        # Criar arquivo Excel
-        create_excel_file(dados, str(excel_path))
+            # Definir nome do arquivo Excel
+            pdf_name = Path(pdf_path).stem
+            excel_path = output_dir / f"{pdf_name}_extraido.xlsx"
 
-        return str(excel_path), dados
+            # Extrair dados usando função apropriada
+            if tipo == "incra":
+                dados = extrair_memorial_incra(Path(pdf_path), api_key)
+            else:
+                dados = extract_table_from_pdf(pdf_path, api_key)
+
+            # Verificar se dados foram extraídos
+            if not dados or 'data' not in dados:
+                raise ValueError("Nenhum dado foi extraído do PDF")
+
+            if not dados['data']:
+                raise ValueError("PDF extraído, mas tabela de dados está vazia")
+
+            # Criar arquivo Excel
+            create_excel_file(dados, str(excel_path))
+
+            # Verificar se o arquivo foi criado
+            if not excel_path.exists():
+                raise RuntimeError(f"Arquivo Excel não foi criado em: {excel_path}\n"
+                                 f"Verifique permissões no diretório: {output_dir}")
+
+            # Verificar se o arquivo tem conteúdo
+            file_size = excel_path.stat().st_size
+            if file_size == 0:
+                raise RuntimeError(f"Arquivo Excel criado mas está vazio: {excel_path}")
+            return str(excel_path), dados
+
+        except Exception as e:
+            error_msg = f"Erro ao extrair PDF para Excel: {str(e)}"
+            print(f"❌ {error_msg}")
+            raise RuntimeError(error_msg) from e
 
     def _ler_dados_excel(self, excel_path: str) -> Dict:
         """
@@ -1828,30 +1857,44 @@ class VerificadorGeorreferenciamento:
             # ===== ETAPA 1: EXTRAIR INCRA PARA EXCEL =====
             self._atualizar_status("Extraindo tabela do INCRA para Excel...")
             self.resultado_text.insert(tk.END, "🔄 [1/2] Extraindo INCRA para Excel...\n")
+            self.resultado_text.insert(tk.END, f"    PDF: {self.incra_path.get()}\n")
             self.root.update_idletasks()
 
-            self.incra_excel_path, self.incra_data = self._extrair_pdf_para_excel(
-                self.incra_path.get(),
-                tipo="incra"
-            )
-            self.resultado_text.insert(
-                tk.END,
-                f"✅ INCRA extraído: {len(self.incra_data['data'])} vértices → {self.incra_excel_path}\n\n"
-            )
+            try:
+                self.incra_excel_path, self.incra_data = self._extrair_pdf_para_excel(
+                    self.incra_path.get(),
+                    tipo="incra"
+                )
+                self.resultado_text.insert(
+                    tk.END,
+                    f"✅ INCRA extraído com sucesso!\n"
+                    f"    Vértices: {len(self.incra_data['data'])}\n"
+                    f"    Excel: {self.incra_excel_path}\n\n"
+                )
+                self.root.update_idletasks()
+            except Exception as e:
+                raise RuntimeError(f"Erro ao extrair INCRA: {str(e)}") from e
 
             # ===== ETAPA 2: EXTRAIR PROJETO PARA EXCEL =====
             self._atualizar_status("Extraindo tabela do Projeto para Excel...")
             self.resultado_text.insert(tk.END, "🔄 [2/2] Extraindo Projeto para Excel...\n")
+            self.resultado_text.insert(tk.END, f"    PDF: {self.projeto_path.get()}\n")
             self.root.update_idletasks()
 
-            self.projeto_excel_path, self.projeto_data = self._extrair_pdf_para_excel(
-                self.projeto_path.get(),
-                tipo="normal"
-            )
-            self.resultado_text.insert(
-                tk.END,
-                f"✅ Projeto extraído: {len(self.projeto_data['data'])} vértices → {self.projeto_excel_path}\n\n"
-            )
+            try:
+                self.projeto_excel_path, self.projeto_data = self._extrair_pdf_para_excel(
+                    self.projeto_path.get(),
+                    tipo="normal"
+                )
+                self.resultado_text.insert(
+                    tk.END,
+                    f"✅ Projeto extraído com sucesso!\n"
+                    f"    Vértices: {len(self.projeto_data['data'])}\n"
+                    f"    Excel: {self.projeto_excel_path}\n\n"
+                )
+                self.root.update_idletasks()
+            except Exception as e:
+                raise RuntimeError(f"Erro ao extrair PROJETO: {str(e)}") from e
 
             self.resultado_text.insert(tk.END, "="*80 + "\n\n")
 
@@ -1909,12 +1952,38 @@ class VerificadorGeorreferenciamento:
                               f"Arquivo: {html_path}")
 
         except Exception as e:
-            erro_msg = f"❌ ERRO: {str(e)}"
-            self.resultado_text.insert(tk.END, f"\n\n{erro_msg}\n")
-            self._atualizar_status("Erro na análise")
-            messagebox.showerror("Erro", f"Ocorreu um erro durante a análise:\n\n{str(e)}")
             import traceback
-            traceback.print_exc()
+            import sys
+
+            # Capturar traceback completo
+            tb_str = traceback.format_exc()
+
+            # Mostrar erro detalhado na GUI
+            erro_msg = f"\n\n{'='*80}\n❌ ERRO DURANTE A ANÁLISE\n{'='*80}\n\n"
+            erro_msg += f"Tipo: {type(e).__name__}\n"
+            erro_msg += f"Mensagem: {str(e)}\n\n"
+            erro_msg += "Detalhes técnicos:\n"
+            erro_msg += "-" * 80 + "\n"
+            erro_msg += tb_str
+            erro_msg += "-" * 80 + "\n\n"
+            erro_msg += "💡 Dicas para resolver:\n"
+            erro_msg += "- Verifique se os arquivos PDF estão acessíveis\n"
+            erro_msg += "- Verifique se você tem permissão para criar arquivos em:\n"
+            erro_msg += f"  {Path(tempfile.gettempdir()) / 'conferencia_geo'}\n"
+            erro_msg += "- Verifique sua conexão com a API do Gemini\n"
+            erro_msg += "- Tente fechar outros programas que possam estar usando os arquivos\n"
+
+            self.resultado_text.insert(tk.END, erro_msg)
+            self._atualizar_status("❌ Erro na análise")
+
+            # Mostrar erro em popup simplificado
+            messagebox.showerror("Erro na Análise",
+                               f"Ocorreu um erro durante a análise:\n\n"
+                               f"{type(e).__name__}: {str(e)}\n\n"
+                               f"Veja detalhes completos na área de resultados.")
+
+            # Também imprimir no console para debug
+            print(erro_msg, file=sys.stderr)
 
         finally:
             self._habilitar_botoes()

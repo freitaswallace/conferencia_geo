@@ -543,6 +543,47 @@ class VerificadorGeorreferenciamento:
             "\n• Os números são IGUAIS? Se NÃO, falta algo!",
             "\n",
             "\n════════════════════════════════════════════════════════════",
+            "\n      🎯 ESTRATÉGIA DE EXTRAÇÃO EM DUAS ETAPAS 🎯",
+            "\n════════════════════════════════════════════════════════════",
+            "\n",
+            "\n🚨🚨🚨 IMPORTANTE: O INCRA É A FONTE DE VERDADE! 🚨🚨🚨",
+            "\n",
+            "\n📋 ETAPA 1 - EXTRAIR CÓDIGOS DO INCRA PRIMEIRO:",
+            "\n",
+            "\n1️⃣ ANTES de fazer qualquer comparação, LEIA APENAS a coluna 'Código' do INCRA",
+            "\n2️⃣ Extraia TODOS os códigos da tabela do INCRA em uma lista",
+            "\n3️⃣ Esta lista será sua FONTE DE VERDADE",
+            "\n",
+            "\n💡 POR QUÊ?",
+            "\n• O documento INCRA tem os códigos mais legíveis",
+            "\n• Os códigos do PROJETO são os MESMOS do INCRA",
+            "\n• Os códigos do SEGMENTO VANTE também são os MESMOS",
+            "\n",
+            "\n✅ EXEMPLO DE LISTA DE CÓDIGOS:",
+            "\nVÉRTICES:",
+            "\n  AKE-V-0166",
+            "\n  AKE-M-1028",
+            "\n  AKE-M-1029",
+            "\n  AKE-M-1087  ← ⚠️ É 1087, NÃO 1098 ou 1069!",
+            "\n  AKE-M-1088  ← ⚠️ É 1088, NÃO 1099 ou 1089!",
+            "\n  AKE-P-3567",
+            "\n  AKE-P-3568",
+            "\n  ... (continue até o último)",
+            "\n",
+            "\nSEGMENTO VANTE:",
+            "\n  (mesmos códigos, na segunda parte da tabela INCRA)",
+            "\n",
+            "\n📋 ETAPA 2 - USAR CÓDIGOS DE REFERÊNCIA NO PROJETO:",
+            "\n",
+            "\n1️⃣ Quando for ler a tabela do PROJETO",
+            "\n2️⃣ Use a LISTA DE CÓDIGOS do INCRA como referência",
+            "\n3️⃣ Procure no PROJETO as coordenadas correspondentes a cada código",
+            "\n4️⃣ Os códigos são IDÊNTICOS nos dois documentos",
+            "\n",
+            "\n🔴 NÃO FAÇA OCR dos códigos do Projeto se não tiver certeza!",
+            "\n🟢 USE os códigos do INCRA como referência!",
+            "\n",
+            "\n════════════════════════════════════════════════════════════",
             "\n",
             "\n1. LOCALIZE a tabela 'DESCRIÇÃO DA PARCELA'",
             "\n",
@@ -579,11 +620,27 @@ class VerificadorGeorreferenciamento:
             "\n   • OLHE COM ATENÇÃO: é hífen (-) ou underscore (_)?",
             "\n",
             "\n4. COPIE as coordenadas COM TODOS OS SÍMBOLOS:",
-            "\n   • Longitude: -48°34'14,782\" (sinal, °, ', \")",
-            "\n   • Latitude: -20°50'45,291\" (sinal, °, ', \")",
+            "\n   ",
+            "\n   📍 NO INCRA (com sinal negativo):",
+            "\n   • Longitude: -48°34'14,782\" (tem sinal negativo -)",
+            "\n   • Latitude: -20°50'45,291\" (tem sinal negativo -)",
             "\n   • Altitude: 532,78 (número com vírgula)",
             "\n   • Azimute: 140°40' (graus e minutos)",
             "\n   • Distância: 43,85 (número com vírgula)",
+            "\n   ",
+            "\n   📍 IMPORTANTE PARA COMPARAÇÃO:",
+            "\n   🚨 O INCRA tem sinal negativo (-) antes das coordenadas",
+            "\n   🚨 O PROJETO NÃO tem sinal negativo, usa W/S no final",
+            "\n   🚨 Na comparação, IGNORE o sinal negativo!",
+            "\n   ",
+            "\n   ✅ EXEMPLOS EQUIVALENTES (são a MESMA coordenada):",
+            "\n   • INCRA: -48°34'14,782\"  ≡  PROJETO: 48°34'14,782\" W",
+            "\n   • INCRA: -20°50'45,291\"  ≡  PROJETO: 20°50'45,291\" S",
+            "\n   ",
+            "\n   💡 Ao comparar:",
+            "\n   1. Ignore o sinal negativo (-) do INCRA",
+            "\n   2. Ignore a letra W/S do PROJETO",
+            "\n   3. Compare apenas os números: 48°34'14,782\" = 48°34'14,782\"",
             "\n",
             "\n5. REPRODUZA A TABELA COMPLETA:",
             "\n   🚨 CRÍTICO: A tabela continua em MÚLTIPLAS PÁGINAS!",
@@ -717,23 +774,38 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • Depois: TODAS as linhas de dados")
             prompt.append("\n   • Pode ter 20, 26, 30 ou mais vértices!")
             prompt.append("\n")
-            prompt.append("\n3. ✍️ COPIE EXATAMENTE - CARACTERE POR CARACTERE")
-            prompt.append("\n   🚨🚨🚨 NÃO INVENTE CÓDIGOS! COPIE O QUE ESTÁ ESCRITO! 🚨🚨🚨")
+            prompt.append("\n3. 🎯 USE OS CÓDIGOS DO INCRA COMO REFERÊNCIA!")
             prompt.append("\n   ")
-            prompt.append("\n   CÓDIGOS:")
-            prompt.append("\n   • Se vê AKE-V-0166, copie AKE-V-0166")
-            prompt.append("\n   • Se vê AKE-M-1087, copie AKE-M-1087 (NÃO mude para 1030!)")
-            prompt.append("\n   • Se vê AKE-M-1088, copie AKE-M-1088 (NÃO omita!)")
-            prompt.append("\n   • Se vê AKE_P-3568 (underscore _), copie AKE_P-3568")
-            prompt.append("\n   • Se vê AKE_P-3569 (underscore _), copie AKE_P-3569")
-            prompt.append("\n   • Se vê AKE-P-3570 (hífen -), copie AKE-P-3570")
-            prompt.append("\n   • ⚠️ ATENÇÃO: _ (underscore) ≠ - (hífen)")
-            prompt.append("\n   • ⚠️ NÚMEROS EXATOS: 1087 ≠ 1030, 1088 ≠ 1080")
+            prompt.append("\n   🚨🚨🚨 ESTRATÉGIA IMPORTANTE 🚨🚨🚨")
             prompt.append("\n   ")
-            prompt.append("\n   COORDENADAS:")
-            prompt.append("\n   • Longitude: 48°34'14,782\" W (com graus, minutos, segundos E direção)")
-            prompt.append("\n   • Latitude: 20°50'45,291\" S (com graus, minutos, segundos E direção)")
+            prompt.append("\n   ✅ Você JÁ extraiu a lista de códigos do INCRA na ETAPA 1")
+            prompt.append("\n   ✅ AGORA use essa lista para encontrar as coordenadas no PROJETO")
+            prompt.append("\n   ✅ Os códigos são IDÊNTICOS nos dois documentos!")
+            prompt.append("\n   ")
+            prompt.append("\n   📋 MÉTODO:")
+            prompt.append("\n   1. Pegue o primeiro código da sua lista do INCRA (ex: AKE-V-0166)")
+            prompt.append("\n   2. PROCURE esse código na tabela do PROJETO")
+            prompt.append("\n   3. Extraia as coordenadas (Long, Lat, Alt, Azimute, Dist)")
+            prompt.append("\n   4. Repita para o próximo código da lista")
+            prompt.append("\n   5. Continue até o último código")
+            prompt.append("\n   ")
+            prompt.append("\n   🔴 NÃO TENTE ler os códigos do Projeto se não conseguir!")
+            prompt.append("\n   🟢 USE a lista de códigos do INCRA que você já tem!")
+            prompt.append("\n   ")
+            prompt.append("\n   ⚠️ LEMBRE-SE:")
+            prompt.append("\n   • Se o INCRA tem AKE-M-1087, o PROJETO também tem AKE-M-1087")
+            prompt.append("\n   • Se o INCRA tem AKE-M-1088, o PROJETO também tem AKE-M-1088")
+            prompt.append("\n   • Os códigos são EXATAMENTE IGUAIS nos dois documentos!")
+            prompt.append("\n   ")
+            prompt.append("\n   COORDENADAS NO PROJETO:")
+            prompt.append("\n   • Longitude: 48°34'14,782\" W (SEM sinal negativo, COM letra W)")
+            prompt.append("\n   • Latitude: 20°50'45,291\" S (SEM sinal negativo, COM letra S)")
             prompt.append("\n   • Altitude: 532,78 (número simples)")
+            prompt.append("\n   ")
+            prompt.append("\n   🚨 DIFERENÇA INCRA vs PROJETO:")
+            prompt.append("\n   • INCRA: -48°34'14,782\" (TEM sinal negativo -)")
+            prompt.append("\n   • PROJETO: 48°34'14,782\" W (NÃO tem sinal -, tem letra W)")
+            prompt.append("\n   • São EQUIVALENTES! Na comparação, ignore o sinal -")
             prompt.append("\n")
             prompt.append("\n4. ⚠️ NÃO CONFUNDA:")
             prompt.append("\n   • ❌ NÃO pegue números do DESENHO (ex: E=741319 N=7696237)")

@@ -550,11 +550,15 @@ class VerificadorGeorreferenciamento:
             "\n   • Distância: 43,85 (número com vírgula)",
             "\n",
             "\n5. REPRODUZA A TABELA COMPLETA:",
-            "\n   • ⚠️ A tabela continua em MÚLTIPLAS PÁGINAS!",
-            "\n   • Página 1: Primeiros ~16 vértices",
-            "\n   • Página 2: Vértices restantes (~10)",
-            "\n   • TOTAL: ~26 vértices",
-            "\n   • COPIE TODOS! Não pare na página 1!",
+            "\n   🚨 CRÍTICO: A tabela continua em MÚLTIPLAS PÁGINAS!",
+            "\n   • Página 1 do INCRA: Primeiros ~16-18 vértices",
+            "\n   • Página 2 do INCRA: Vértices restantes (~8-10)",
+            "\n   • TOTAL: ~26 vértices (ou mais)",
+            "\n   • O ÚLTIMO VÉRTICE geralmente FECHA O POLÍGONO voltando ao primeiro",
+            "\n   • ⚠️ NUNCA pare de ler na página 1!",
+            "\n   • ⚠️ SEMPRE verifique se há mais páginas!",
+            "\n   • ⚠️ O último vértice é TÃO IMPORTANTE quanto o primeiro!",
+            "\n   • Se você extraiu 25 vértices, PROCURE O 26º!",
             "\n",
             "\n6. MANTENHA A FORMATAÇÃO:",
             "\n   • Use espaços/tabs para alinhar colunas",
@@ -636,10 +640,14 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • ❌ NÃO pegue números dos CARIMBOS")
             prompt.append("\n   • ✅ SÓ pegue da TABELA DE COORDENADAS!")
             prompt.append("\n")
-            prompt.append("\n5. 📝 LISTE TODOS")
+            prompt.append("\n5. 📝 LISTE TODOS OS VÉRTICES")
+            prompt.append("\n   🚨 CRÍTICO: Extraia TODOS os vértices da tabela!")
             prompt.append("\n   • Se a tabela tem 26 vértices, liste os 26!")
-            prompt.append("\n   • Não omita nenhum vértice")
-            prompt.append("\n   • Não pare em 3-4 vértices")
+            prompt.append("\n   • Se a tabela tem 30 vértices, liste os 30!")
+            prompt.append("\n   • O ÚLTIMO VÉRTICE é tão importante quanto o primeiro!")
+            prompt.append("\n   • NÃO omita nenhum vértice")
+            prompt.append("\n   • NÃO pare em 3-4 vértices")
+            prompt.append("\n   • Leia até o FIM da tabela!")
             prompt.append("\n")
             prompt.append("\n💡 EXEMPLO CORRETO DE EXTRAÇÃO:")
             prompt.append("\nVértice AKE-V-0166:")
@@ -1224,11 +1232,86 @@ class VerificadorGeorreferenciamento:
             "\n"
             "\n---"
             "\n*Relatório gerado por IA - Verificação humana sempre recomendada*"
+            "\n"
+            "\n"
+            "\n🚨🚨🚨 INSTRUÇÕES FINAIS CRÍTICAS 🚨🚨🚨"
+            "\n"
+            "\n1️⃣ EXTRAÇÃO COMPLETA DE VÉRTICES:"
+            "\n   ⚠️ MUITO IMPORTANTE: A tabela de coordenadas continua em MÚLTIPLAS PÁGINAS!"
+            "\n   • Página 1 do INCRA: ~16-18 vértices"
+            "\n   • Página 2 do INCRA: Restante dos vértices (~8-10)"
+            "\n   • TOTAL esperado: ~26 vértices"
+            "\n   • NÃO PARE de ler na página 1!"
+            "\n   • Continue lendo ATÉ O ÚLTIMO VÉRTICE da tabela!"
+            "\n   • O último vértice geralmente FECHA O POLÍGONO voltando ao primeiro"
+            "\n   • Se você encontrar 25 vértices, procure o 26º!"
+            "\n   • NUNCA omita o último vértice!"
+            "\n"
+            "\n2️⃣ FORMATO DE RESPOSTA:"
+            "\n   🚨 CRÍTICO: Retorne APENAS o código HTML!"
+            "\n   ❌ NÃO escreva texto antes do HTML"
+            "\n   ❌ NÃO escreva 'OK. Entendido! Farei a análise...'"
+            "\n   ❌ NÃO escreva '--- INÍCIO ANÁLISE ---'"
+            "\n   ❌ NÃO escreva suas notas de trabalho"
+            "\n   ❌ NÃO use markdown code blocks (```html)"
+            "\n   ✅ Comece DIRETAMENTE com: <!DOCTYPE html>"
+            "\n   ✅ Termine com: </html>"
+            "\n   ✅ Nada antes, nada depois!"
+            "\n"
+            "\n3️⃣ EXEMPLO DE RESPOSTA CORRETA:"
+            "\n   <!DOCTYPE html>"
+            "\n   <html lang='pt-BR'>"
+            "\n   <head>..."
+            "\n   [todo o relatório HTML]"
+            "\n   </html>"
+            "\n"
+            "\n4️⃣ EXEMPLO DE RESPOSTA ERRADA:"
+            "\n   ❌ OK. Entendido! Farei a análise..."
+            "\n   ❌ --- INÍCIO ANÁLISE ---"
+            "\n   ❌ ```html"
+            "\n   ❌ <!DOCTYPE html>..."
+            "\n"
+            "\n🎯 LEMBRE-SE:"
+            "\n• Sua resposta deve começar com <!DOCTYPE html>"
+            "\n• Sua resposta deve terminar com </html>"
+            "\n• NADA mais!"
         )
-        
+
         prompt.append(instrucoes_saida)
         return prompt
         
+    def _extrair_html_puro(self, texto: str) -> str:
+        """
+        Extrai apenas o código HTML da resposta da IA, removendo texto extra.
+
+        Args:
+            texto: Resposta completa da IA
+
+        Returns:
+            HTML limpo sem texto antes ou depois
+        """
+        import re
+
+        # Remover blocos de código markdown se houver
+        texto = re.sub(r'```html\s*', '', texto)
+        texto = re.sub(r'```\s*$', '', texto)
+
+        # Procurar pelo início do HTML
+        inicio_html = texto.find('<!DOCTYPE html>')
+        if inicio_html == -1:
+            inicio_html = texto.find('<html')
+
+        # Procurar pelo fim do HTML
+        fim_html = texto.rfind('</html>')
+
+        if inicio_html != -1 and fim_html != -1:
+            # Extrair apenas o HTML
+            html_puro = texto[inicio_html:fim_html + 7]  # +7 para incluir </html>
+            return html_puro
+        else:
+            # Se não encontrar marcadores HTML, retornar o texto original
+            return texto
+
     def _executar_analise_gemini(self):
         """
         Executa a análise completa usando a API do Gemini.
@@ -1279,12 +1362,15 @@ class VerificadorGeorreferenciamento:
             self.root.update_idletasks()
             
             response = model.generate_content(prompt)
-            
+
+            # Limpar resposta - extrair apenas o HTML puro
+            html_limpo = self._extrair_html_puro(response.text)
+
             # Exibir resultado
-            self.resultado_text.insert(tk.END, response.text)
-            
+            self.resultado_text.insert(tk.END, html_limpo)
+
             # Salvar HTML para poder exportar depois
-            self.ultimo_relatorio_html = response.text
+            self.ultimo_relatorio_html = html_limpo
             
             # Habilitar botão de salvar
             self.btn_salvar_html.config(state='normal')

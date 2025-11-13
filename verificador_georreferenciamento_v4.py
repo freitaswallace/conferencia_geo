@@ -83,8 +83,8 @@ class VerificadorGeorreferenciamento:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("Verificador INCRA - Sistema Profissional v4.0")
-        self.root.geometry("1400x950")
+        self.root.title("✨ Verificador INCRA Pro v4.0")
+        self.root.geometry("1450x980")
 
         # Gerenciador de configurações
         self.config_manager = ConfigManager()
@@ -93,7 +93,7 @@ class VerificadorGeorreferenciamento:
         self.incra_path = tk.StringVar()
         self.projeto_path = tk.StringVar()
         self.numero_prenotacao = tk.StringVar()
-        self.modo_atual = tk.StringVar(value="manual")
+        self.modo_atual = tk.StringVar(value="automatico")
 
         # Variáveis para armazenar dados extraídos
         self.incra_excel_path: Optional[str] = None
@@ -117,323 +117,672 @@ class VerificadorGeorreferenciamento:
         self._carregar_api_key()
 
     def _configurar_estilo(self):
-        """Configura tema moderno e profissional."""
+        """Configura tema moderno e profissional com cores vibrantes."""
         style = ttk.Style()
         style.theme_use('clam')
 
-        # Cores modernas
-        bg_color = "#f0f0f0"
-        accent_color = "#2196F3"
-        success_color = "#4CAF50"
-        warning_color = "#FF9800"
+        # Paleta de cores moderna e agradável (inspirada em Material Design)
+        self.colors = {
+            'primary': '#6366F1',      # Indigo vibrante
+            'primary_dark': '#4F46E5',
+            'secondary': '#EC4899',    # Rosa vibrante
+            'success': '#10B981',      # Verde esmeralda
+            'warning': '#F59E0B',      # Âmbar
+            'danger': '#EF4444',       # Vermelho
+            'info': '#3B82F6',         # Azul
+            'bg_light': '#F9FAFB',     # Cinza muito claro
+            'bg_card': '#FFFFFF',
+            'text_dark': '#1F2937',
+            'text_medium': '#6B7280',
+            'text_light': '#9CA3AF',
+            'border': '#E5E7EB'
+        }
 
-        # Configurar estilos
-        style.configure('Title.TLabel', font=('Segoe UI', 16, 'bold'), foreground=accent_color)
-        style.configure('Subtitle.TLabel', font=('Segoe UI', 12, 'bold'))
-        style.configure('Normal.TLabel', font=('Segoe UI', 10))
-        style.configure('Large.TButton', font=('Segoe UI', 11, 'bold'), padding=12)
-        style.configure('Action.TButton', font=('Segoe UI', 10, 'bold'), padding=8)
-        style.configure('Custom.TNotebook', tabposition='wn')
-        style.configure('Custom.TNotebook.Tab', padding=[20, 10], font=('Segoe UI', 11, 'bold'))
+        # Configurar background
+        self.root.configure(bg=self.colors['bg_light'])
 
-        self.root.configure(bg=bg_color)
+        # Estilos de labels
+        style.configure('Title.TLabel',
+            font=('Inter', 24, 'bold'),
+            foreground=self.colors['primary'],
+            background=self.colors['bg_light']
+        )
+
+        style.configure('Subtitle.TLabel',
+            font=('Inter', 13, 'bold'),
+            foreground=self.colors['text_dark'],
+            background=self.colors['bg_light']
+        )
+
+        style.configure('Normal.TLabel',
+            font=('Inter', 10),
+            foreground=self.colors['text_medium'],
+            background=self.colors['bg_light']
+        )
+
+        style.configure('Emoji.TLabel',
+            font=('Segoe UI Emoji', 32),
+            background=self.colors['bg_card']
+        )
+
+        # Estilos de botões
+        style.configure('Primary.TButton',
+            font=('Inter', 12, 'bold'),
+            padding=(20, 15),
+            borderwidth=0
+        )
+
+        style.map('Primary.TButton',
+            background=[('active', self.colors['primary_dark']), ('!active', self.colors['primary'])],
+            foreground=[('active', 'white'), ('!active', 'white')]
+        )
+
+        style.configure('Success.TButton',
+            font=('Inter', 11, 'bold'),
+            padding=(15, 12)
+        )
+
+        style.configure('Action.TButton',
+            font=('Inter', 10, 'bold'),
+            padding=(10, 8)
+        )
+
+        # Estilos de frames
+        style.configure('Card.TFrame',
+            background=self.colors['bg_card'],
+            relief='flat'
+        )
+
+        style.configure('TFrame',
+            background=self.colors['bg_light']
+        )
+
+        # Estilos de LabelFrame
+        style.configure('Card.TLabelframe',
+            background=self.colors['bg_card'],
+            borderwidth=0
+        )
+
+        style.configure('Card.TLabelframe.Label',
+            font=('Inter', 12, 'bold'),
+            foreground=self.colors['primary'],
+            background=self.colors['bg_card']
+        )
 
     def _criar_interface(self):
         """Cria todos os elementos da interface gráfica."""
 
-        # Frame principal com padding
-        main_frame = ttk.Frame(self.root, padding="15")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Frame principal
+        main_frame = tk.Frame(self.root, bg=self.colors['bg_light'])
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
 
-        # Configurar grid para expansão
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(2, weight=1)
+        # ===== CABEÇALHO COM DESIGN MODERNO =====
+        header_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])
+        header_frame.pack(fill=tk.X, pady=(0, 25))
 
-        # ===== CABEÇALHO =====
-        header_frame = ttk.Frame(main_frame)
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        # Título com emoji grande
+        title_container = tk.Frame(header_frame, bg=self.colors['bg_light'])
+        title_container.pack()
+
+        tk.Label(
+            title_container,
+            text="🏛️",
+            font=('Segoe UI Emoji', 48),
+            bg=self.colors['bg_light']
+        ).pack(side=tk.LEFT, padx=(0, 15))
+
+        title_text_frame = tk.Frame(title_container, bg=self.colors['bg_light'])
+        title_text_frame.pack(side=tk.LEFT)
 
         ttk.Label(
-            header_frame,
-            text="🏛️ VERIFICADOR DE GEORREFERENCIAMENTO INCRA",
+            title_text_frame,
+            text="VERIFICADOR INCRA PRO",
             style='Title.TLabel'
-        ).pack()
+        ).pack(anchor=tk.W)
 
         ttk.Label(
-            header_frame,
-            text="Sistema Profissional de Análise e Conferência - v4.0",
-            style='Normal.TLabel',
-            foreground='#666'
-        ).pack()
+            title_text_frame,
+            text="Sistema Inteligente de Análise e Conferência Georreferenciada",
+            style='Normal.TLabel'
+        ).pack(anchor=tk.W)
 
-        # ===== BARRA DE FERRAMENTAS SUPERIOR =====
-        toolbar_frame = ttk.Frame(main_frame)
-        toolbar_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        # ===== BARRA DE FERRAMENTAS COM CARDS =====
+        toolbar_card = self._criar_card(main_frame)
+        toolbar_card.pack(fill=tk.X, pady=(0, 20))
 
-        # Botão de configuração da API
-        ttk.Button(
-            toolbar_frame,
-            text="⚙️ Configurar API Key",
+        toolbar_content = tk.Frame(toolbar_card, bg=self.colors['bg_card'])
+        toolbar_content.pack(fill=tk.X, padx=20, pady=15)
+
+        # Botão API Key estilizado
+        api_frame = tk.Frame(toolbar_content, bg=self.colors['bg_card'])
+        api_frame.pack(side=tk.LEFT, padx=(0, 20))
+
+        tk.Button(
+            api_frame,
+            text="⚙️  Configurar API",
             command=self._abrir_config_api,
-            style='Action.TButton'
-        ).pack(side=tk.LEFT, padx=5)
+            font=('Inter', 10, 'bold'),
+            bg=self.colors['info'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=15,
+            pady=8,
+            cursor='hand2',
+            activebackground=self.colors['primary']
+        ).pack()
 
-        # Indicador de status da API
-        self.api_status_label = ttk.Label(
-            toolbar_frame,
-            text="❌ API Key não configurada",
-            foreground='red',
-            font=('Segoe UI', 9)
+        # Status API
+        self.api_status_label = tk.Label(
+            api_frame,
+            text="⭕ Não configurada",
+            font=('Inter', 8),
+            fg=self.colors['danger'],
+            bg=self.colors['bg_card']
         )
-        self.api_status_label.pack(side=tk.LEFT, padx=10)
+        self.api_status_label.pack(pady=(5, 0))
 
-        ttk.Separator(toolbar_frame, orient='vertical').pack(side=tk.LEFT, fill='y', padx=10)
+        # Separador vertical
+        tk.Frame(
+            toolbar_content,
+            width=2,
+            bg=self.colors['border']
+        ).pack(side=tk.LEFT, fill=tk.Y, padx=20)
 
-        # Campo de Número de Prenotação (obrigatório)
-        ttk.Label(
-            toolbar_frame,
-            text="📋 Nº Prenotação:",
-            style='Subtitle.TLabel'
-        ).pack(side=tk.LEFT, padx=5)
+        # Campo Prenotação estilizado
+        prenotacao_frame = tk.Frame(toolbar_content, bg=self.colors['bg_card'])
+        prenotacao_frame.pack(side=tk.LEFT)
 
-        prenotacao_entry = ttk.Entry(
-            toolbar_frame,
+        tk.Label(
+            prenotacao_frame,
+            text="📋",
+            font=('Segoe UI Emoji', 20),
+            bg=self.colors['bg_card']
+        ).pack(side=tk.LEFT, padx=(0, 10))
+
+        prenotacao_input_frame = tk.Frame(prenotacao_frame, bg=self.colors['bg_card'])
+        prenotacao_input_frame.pack(side=tk.LEFT)
+
+        tk.Label(
+            prenotacao_input_frame,
+            text="Nº Prenotação",
+            font=('Inter', 11, 'bold'),
+            fg=self.colors['text_dark'],
+            bg=self.colors['bg_card']
+        ).pack(anchor=tk.W)
+
+        prenotacao_entry = tk.Entry(
+            prenotacao_input_frame,
             textvariable=self.numero_prenotacao,
+            font=('Inter', 13, 'bold'),
             width=15,
-            font=('Segoe UI', 11, 'bold')
+            relief=tk.FLAT,
+            bg='#F3F4F6',
+            fg=self.colors['primary'],
+            insertbackground=self.colors['primary'],
+            borderwidth=2,
+            highlightthickness=2,
+            highlightcolor=self.colors['primary'],
+            highlightbackground=self.colors['border']
         )
-        prenotacao_entry.pack(side=tk.LEFT, padx=5)
+        prenotacao_entry.pack(pady=(5, 0), ipady=6, ipadx=8)
 
-        # Validação para aceitar apenas números
         vcmd = (self.root.register(self._validar_numero), '%P')
         prenotacao_entry.config(validate='key', validatecommand=vcmd)
 
-        ttk.Label(
-            toolbar_frame,
-            text="(apenas números)",
-            font=('Segoe UI', 8),
-            foreground='#666'
-        ).pack(side=tk.LEFT)
+        # ===== SELETOR DE MODO (CARDS GRANDES E BONITOS) =====
+        modo_card = self._criar_card(main_frame)
+        modo_card.pack(fill=tk.X, pady=(0, 20))
 
-        # ===== NOTEBOOK PARA MODOS =====
-        self.notebook = ttk.Notebook(main_frame, style='Custom.TNotebook')
-        self.notebook.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        modo_content = tk.Frame(modo_card, bg=self.colors['bg_card'])
+        modo_content.pack(fill=tk.X, padx=20, pady=20)
 
-        # TAB 1: MODO MANUAL
-        self.tab_manual = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.tab_manual, text="📝 MODO MANUAL")
+        tk.Label(
+            modo_content,
+            text="Escolha o modo de operação:",
+            font=('Inter', 13, 'bold'),
+            fg=self.colors['text_dark'],
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 15))
 
-        # TAB 2: MODO AUTOMÁTICO
-        self.tab_automatico = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(self.tab_automatico, text="🤖 MODO AUTOMÁTICO")
+        # Container para os cards de modo
+        modos_container = tk.Frame(modo_content, bg=self.colors['bg_card'])
+        modos_container.pack(fill=tk.X)
 
-        # Criar conteúdo das tabs
-        self._criar_modo_manual()
-        self._criar_modo_automatico()
-
-        # ===== ÁREA DE RESULTADOS (compartilhada) =====
-        result_frame = ttk.LabelFrame(main_frame, text="📊 Relatório de Comparação", padding="10")
-        result_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(15, 0))
-
-        main_frame.rowconfigure(3, weight=1)
-
-        # Área de texto com scroll
-        self.resultado_text = scrolledtext.ScrolledText(
-            result_frame,
-            width=120,
-            height=12,
-            font=('Consolas', 9),
-            wrap=tk.WORD
+        # CARD MODO AUTOMÁTICO
+        self.card_automatico = self._criar_modo_card(
+            modos_container,
+            "🤖",
+            "MODO AUTOMÁTICO",
+            "Busca inteligente na rede\nExtração automática com IA\nMais rápido e eficiente",
+            self.colors['primary'],
+            lambda: self._selecionar_modo("automatico")
         )
-        self.resultado_text.pack(fill=tk.BOTH, expand=True)
+        self.card_automatico.pack(side=tk.LEFT, padx=(0, 15), expand=True, fill=tk.BOTH)
+
+        # CARD MODO MANUAL
+        self.card_manual = self._criar_modo_card(
+            modos_container,
+            "📝",
+            "MODO MANUAL",
+            "Selecione os arquivos manualmente\nMaior controle sobre os documentos\nRecomendado para casos especiais",
+            self.colors['secondary'],
+            lambda: self._selecionar_modo("manual")
+        )
+        self.card_manual.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        # ===== CONTEÚDO DO MODO SELECIONADO =====
+        self.content_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])
+        self.content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+
+        # Criar ambos os modos (esconder um deles)
+        self._criar_modo_automatico_content()
+        self._criar_modo_manual_content()
+
+        # Selecionar modo inicial
+        self._selecionar_modo("automatico")
+
+        # ===== ÁREA DE RESULTADOS =====
+        result_card = self._criar_card(main_frame)
+        result_card.pack(fill=tk.BOTH, expand=True)
+
+        result_content = tk.Frame(result_card, bg=self.colors['bg_card'])
+        result_content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+
+        tk.Label(
+            result_content,
+            text="📊  Relatório de Comparação",
+            font=('Inter', 12, 'bold'),
+            fg=self.colors['primary'],
+            bg=self.colors['bg_card']
+        ).pack(anchor=tk.W, pady=(0, 10))
+
+        # ScrolledText com estilo
+        self.resultado_text = scrolledtext.ScrolledText(
+            result_content,
+            font=('Consolas', 10),
+            wrap=tk.WORD,
+            relief=tk.FLAT,
+            bg='#F9FAFB',
+            fg=self.colors['text_dark'],
+            insertbackground=self.colors['primary'],
+            selectbackground=self.colors['primary'],
+            selectforeground='white',
+            borderwidth=0,
+            highlightthickness=1,
+            highlightcolor=self.colors['border'],
+            highlightbackground=self.colors['border']
+        )
+        self.resultado_text.pack(fill=tk.BOTH, expand=True, ipady=10, ipadx=10)
 
         # ===== BARRA DE STATUS =====
-        self.status_label = ttk.Label(
-            main_frame,
-            text="✅ Pronto para iniciar",
-            relief=tk.SUNKEN,
-            anchor=tk.W,
-            font=('Segoe UI', 9)
+        status_frame = tk.Frame(main_frame, bg=self.colors['bg_card'], height=40)
+        status_frame.pack(fill=tk.X, pady=(15, 0))
+
+        self.status_label = tk.Label(
+            status_frame,
+            text="✨ Pronto para iniciar",
+            font=('Inter', 10),
+            fg=self.colors['success'],
+            bg=self.colors['bg_card'],
+            anchor=tk.W
         )
-        self.status_label.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.status_label.pack(fill=tk.X, padx=15, pady=10)
 
-    def _criar_modo_manual(self):
-        """Cria interface do modo manual."""
-        frame = self.tab_manual
-
-        ttk.Label(
-            frame,
-            text="Selecione manualmente os arquivos para comparação",
-            style='Normal.TLabel',
-            foreground='#666'
-        ).pack(pady=(0, 20))
-
-        # Frame para seleção de arquivos
-        files_frame = ttk.Frame(frame)
-        files_frame.pack(fill=tk.X, pady=10)
-
-        # INCRA
-        incra_frame = ttk.LabelFrame(files_frame, text="📄 Memorial INCRA", padding="15")
-        incra_frame.pack(fill=tk.X, pady=10)
-
-        ttk.Entry(
-            incra_frame,
-            textvariable=self.incra_path,
-            font=('Segoe UI', 10),
-            state='readonly'
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-
-        ttk.Button(
-            incra_frame,
-            text="📁 Selecionar PDF",
-            command=lambda: self._selecionar_arquivo(self.incra_path, "INCRA"),
-            style='Action.TButton'
-        ).pack(side=tk.RIGHT)
-
-        # PROJETO
-        projeto_frame = ttk.LabelFrame(files_frame, text="📐 Planta/Projeto", padding="15")
-        projeto_frame.pack(fill=tk.X, pady=10)
-
-        ttk.Entry(
-            projeto_frame,
-            textvariable=self.projeto_path,
-            font=('Segoe UI', 10),
-            state='readonly'
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-
-        ttk.Button(
-            projeto_frame,
-            text="📁 Selecionar PDF",
-            command=lambda: self._selecionar_arquivo(self.projeto_path, "Projeto"),
-            style='Action.TButton'
-        ).pack(side=tk.RIGHT)
-
-        # Botão de comparação
-        ttk.Separator(frame, orient='horizontal').pack(fill=tk.X, pady=20)
-
-        btn_frame = ttk.Frame(frame)
-        btn_frame.pack()
-
-        self.btn_comparar_manual = ttk.Button(
-            btn_frame,
-            text="🔍 COMPARAR DOCUMENTOS",
-            command=self._comparar_manual,
-            style='Large.TButton',
-            width=40
+    def _criar_card(self, parent):
+        """Cria um card (frame com sombra e bordas arredondadas simuladas)."""
+        card = tk.Frame(
+            parent,
+            bg=self.colors['bg_card'],
+            highlightbackground=self.colors['border'],
+            highlightthickness=1
         )
-        self.btn_comparar_manual.pack(pady=10)
+        return card
 
-    def _criar_modo_automatico(self):
-        """Cria interface do modo automático."""
-        frame = self.tab_automatico
+    def _criar_modo_card(self, parent, emoji, titulo, descricao, cor, comando):
+        """Cria um card clicável para seleção de modo."""
+        card = tk.Frame(
+            parent,
+            bg=self.colors['bg_card'],
+            highlightbackground=self.colors['border'],
+            highlightthickness=2,
+            cursor='hand2'
+        )
 
-        # Instruções
-        info_frame = ttk.Frame(frame)
-        info_frame.pack(fill=tk.X, pady=(0, 20))
+        # Conteúdo interno
+        content = tk.Frame(card, bg=self.colors['bg_card'])
+        content.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
 
-        ttk.Label(
-            info_frame,
-            text="🤖 Modo Automático - Busca Inteligente",
-            style='Subtitle.TLabel'
+        # Emoji grande
+        tk.Label(
+            content,
+            text=emoji,
+            font=('Segoe UI Emoji', 48),
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 15))
+
+        # Título
+        tk.Label(
+            content,
+            text=titulo,
+            font=('Inter', 14, 'bold'),
+            fg=cor,
+            bg=self.colors['bg_card']
         ).pack()
 
-        ttk.Label(
-            info_frame,
-            text="O sistema buscará automaticamente o arquivo TIFF na rede, converterá para PDF e extrairá os documentos necessários.",
-            font=('Segoe UI', 9),
-            foreground='#666',
-            wraplength=800
-        ).pack(pady=5)
+        # Descrição
+        tk.Label(
+            content,
+            text=descricao,
+            font=('Inter', 9),
+            fg=self.colors['text_medium'],
+            bg=self.colors['bg_card'],
+            justify=tk.CENTER
+        ).pack(pady=(10, 0))
 
-        # Campo de entrada para prenotação
-        input_frame = ttk.LabelFrame(frame, text="📋 Dados de Entrada", padding="20")
-        input_frame.pack(fill=tk.X, pady=20)
-
-        entry_container = ttk.Frame(input_frame)
-        entry_container.pack()
-
-        ttk.Label(
-            entry_container,
-            text="Número de Prenotação:",
-            style='Subtitle.TLabel'
-        ).pack(side=tk.LEFT, padx=(0, 10))
-
-        self.prenotacao_auto_entry = ttk.Entry(
-            entry_container,
-            textvariable=self.numero_prenotacao,
-            width=20,
-            font=('Segoe UI', 12, 'bold')
+        # Badge de status (inicialmente oculto)
+        badge = tk.Label(
+            content,
+            text="✓ SELECIONADO",
+            font=('Inter', 8, 'bold'),
+            fg='white',
+            bg=cor,
+            padx=10,
+            pady=4
         )
-        self.prenotacao_auto_entry.pack(side=tk.LEFT, padx=5)
 
-        vcmd = (self.root.register(self._validar_numero), '%P')
-        self.prenotacao_auto_entry.config(validate='key', validatecommand=vcmd)
+        # Evento de clique
+        def on_click(event=None):
+            comando()
 
-        ttk.Label(
-            entry_container,
-            text="Ex: 229885 (sem zeros à esquerda)",
-            font=('Segoe UI', 8, 'italic'),
-            foreground='#666'
-        ).pack(side=tk.LEFT, padx=10)
+        card.bind('<Button-1>', on_click)
+        for widget in card.winfo_children():
+            widget.bind('<Button-1>', on_click)
+            for child in widget.winfo_children():
+                child.bind('<Button-1>', on_click)
 
-        # Botão de iniciar busca automática
-        ttk.Separator(frame, orient='horizontal').pack(fill=tk.X, pady=20)
+        # Guardar referências para atualização
+        card.badge = badge
+        card.cor = cor
+        card.content_frame = content
 
-        btn_frame = ttk.Frame(frame)
-        btn_frame.pack()
+        return card
 
-        self.btn_iniciar_automatico = ttk.Button(
-            btn_frame,
-            text="🚀 INICIAR BUSCA AUTOMÁTICA",
+    def _selecionar_modo(self, modo):
+        """Alterna entre modos e atualiza visual dos cards."""
+        self.modo_atual.set(modo)
+
+        # Atualizar visual dos cards
+        if modo == "automatico":
+            # Destacar automático
+            self.card_automatico.config(highlightbackground=self.colors['primary'], highlightthickness=3)
+            self.card_automatico.badge.pack(pady=(15, 0))
+
+            # Desmarcar manual
+            self.card_manual.config(highlightbackground=self.colors['border'], highlightthickness=2)
+            self.card_manual.badge.pack_forget()
+
+            # Mostrar conteúdo
+            self.manual_content.pack_forget()
+            self.automatico_content.pack(fill=tk.BOTH, expand=True)
+
+        else:  # manual
+            # Destacar manual
+            self.card_manual.config(highlightbackground=self.colors['secondary'], highlightthickness=3)
+            self.card_manual.badge.pack(pady=(15, 0))
+
+            # Desmarcar automático
+            self.card_automatico.config(highlightbackground=self.colors['border'], highlightthickness=2)
+            self.card_automatico.badge.pack_forget()
+
+            # Mostrar conteúdo
+            self.automatico_content.pack_forget()
+            self.manual_content.pack(fill=tk.BOTH, expand=True)
+
+    def _criar_modo_automatico_content(self):
+        """Cria conteúdo do modo automático."""
+        self.automatico_content = self._criar_card(self.content_frame)
+
+        content = tk.Frame(self.automatico_content, bg=self.colors['bg_card'])
+        content.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
+
+        # Descrição
+        tk.Label(
+            content,
+            text="🚀  O sistema buscará automaticamente o arquivo na rede e processará tudo para você!",
+            font=('Inter', 11),
+            fg=self.colors['text_medium'],
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 25))
+
+        # Botão grande de iniciar
+        self.btn_iniciar_automatico = tk.Button(
+            content,
+            text="🚀  INICIAR BUSCA AUTOMÁTICA",
             command=self._iniciar_modo_automatico,
-            style='Large.TButton',
-            width=40
+            font=('Inter', 14, 'bold'),
+            bg=self.colors['primary'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=40,
+            pady=20,
+            cursor='hand2',
+            activebackground=self.colors['primary_dark'],
+            activeforeground='white'
         )
-        self.btn_iniciar_automatico.pack(pady=10)
+        self.btn_iniciar_automatico.pack(pady=20)
 
-        # Frame para preview dos documentos (inicialmente oculto)
-        self.preview_frame = ttk.LabelFrame(frame, text="👁️ Prévia dos Documentos Extraídos", padding="20")
+        # Frame de preview (inicialmente oculto)
+        self.preview_frame = tk.Frame(content, bg=self.colors['bg_card'])
 
-        preview_container = ttk.Frame(self.preview_frame)
+        preview_title = tk.Label(
+            self.preview_frame,
+            text="👁️  Prévia dos Documentos Extraídos",
+            font=('Inter', 12, 'bold'),
+            fg=self.colors['primary'],
+            bg=self.colors['bg_card']
+        )
+        preview_title.pack(pady=(20, 15))
+
+        # Container para previews lado a lado
+        preview_container = tk.Frame(self.preview_frame, bg=self.colors['bg_card'])
         preview_container.pack(fill=tk.BOTH, expand=True)
 
         # Preview INCRA
-        incra_prev_frame = ttk.Frame(preview_container)
-        incra_prev_frame.pack(side=tk.LEFT, padx=20, expand=True)
+        incra_frame = tk.Frame(preview_container, bg=self.colors['bg_card'])
+        incra_frame.pack(side=tk.LEFT, padx=15, expand=True)
 
-        ttk.Label(incra_prev_frame, text="📄 Memorial INCRA", style='Subtitle.TLabel').pack(pady=5)
-        self.incra_preview_label = ttk.Label(incra_prev_frame, text="", relief=tk.RIDGE)
+        tk.Label(
+            incra_frame,
+            text="📄 Memorial INCRA",
+            font=('Inter', 11, 'bold'),
+            fg=self.colors['text_dark'],
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 10))
+
+        self.incra_preview_label = tk.Label(
+            incra_frame,
+            bg=self.colors['bg_light'],
+            relief=tk.FLAT,
+            highlightthickness=2,
+            highlightbackground=self.colors['border']
+        )
         self.incra_preview_label.pack()
 
-        # Preview PROJETO
-        projeto_prev_frame = ttk.Frame(preview_container)
-        projeto_prev_frame.pack(side=tk.LEFT, padx=20, expand=True)
+        # Preview Projeto
+        projeto_frame = tk.Frame(preview_container, bg=self.colors['bg_card'])
+        projeto_frame.pack(side=tk.LEFT, padx=15, expand=True)
 
-        ttk.Label(projeto_prev_frame, text="📐 Planta/Projeto", style='Subtitle.TLabel').pack(pady=5)
-        self.projeto_preview_label = ttk.Label(projeto_prev_frame, text="", relief=tk.RIDGE)
+        tk.Label(
+            projeto_frame,
+            text="📐 Planta/Projeto",
+            font=('Inter', 11, 'bold'),
+            fg=self.colors['text_dark'],
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 10))
+
+        self.projeto_preview_label = tk.Label(
+            projeto_frame,
+            bg=self.colors['bg_light'],
+            relief=tk.FLAT,
+            highlightthickness=2,
+            highlightbackground=self.colors['border']
+        )
         self.projeto_preview_label.pack()
 
         # Botões de confirmação
-        confirm_frame = ttk.Frame(self.preview_frame)
-        confirm_frame.pack(pady=20)
+        confirm_frame = tk.Frame(self.preview_frame, bg=self.colors['bg_card'])
+        confirm_frame.pack(pady=25)
 
-        ttk.Button(
+        tk.Button(
             confirm_frame,
-            text="✅ CONTINUAR",
+            text="✅  CONTINUAR",
             command=self._confirmar_documentos_automaticos,
-            style='Large.TButton',
-            width=25
+            font=('Inter', 12, 'bold'),
+            bg=self.colors['success'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=30,
+            pady=12,
+            cursor='hand2',
+            activebackground='#059669'
         ).pack(side=tk.LEFT, padx=10)
 
-        ttk.Button(
+        tk.Button(
             confirm_frame,
-            text="✋ FAZER MANUAL",
+            text="✋  FAZER MANUAL",
             command=self._alternar_para_manual,
-            style='Large.TButton',
-            width=25
+            font=('Inter', 12, 'bold'),
+            bg=self.colors['warning'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=30,
+            pady=12,
+            cursor='hand2',
+            activebackground='#D97706'
         ).pack(side=tk.LEFT, padx=10)
+
+    def _criar_modo_manual_content(self):
+        """Cria conteúdo do modo manual."""
+        self.manual_content = self._criar_card(self.content_frame)
+
+        content = tk.Frame(self.manual_content, bg=self.colors['bg_card'])
+        content.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
+
+        # Descrição
+        tk.Label(
+            content,
+            text="📁  Selecione manualmente os arquivos PDF para comparação",
+            font=('Inter', 11),
+            fg=self.colors['text_medium'],
+            bg=self.colors['bg_card']
+        ).pack(pady=(0, 25))
+
+        # Seleção INCRA
+        incra_card = tk.Frame(
+            content,
+            bg='#FEF3C7',
+            highlightthickness=2,
+            highlightbackground='#FCD34D'
+        )
+        incra_card.pack(fill=tk.X, pady=10)
+
+        incra_content = tk.Frame(incra_card, bg='#FEF3C7')
+        incra_content.pack(fill=tk.X, padx=20, pady=15)
+
+        tk.Label(
+            incra_content,
+            text="📄  Memorial INCRA",
+            font=('Inter', 12, 'bold'),
+            fg='#92400E',
+            bg='#FEF3C7'
+        ).pack(anchor=tk.W, pady=(0, 10))
+
+        incra_input_frame = tk.Frame(incra_content, bg='#FEF3C7')
+        incra_input_frame.pack(fill=tk.X)
+
+        tk.Entry(
+            incra_input_frame,
+            textvariable=self.incra_path,
+            font=('Inter', 10),
+            state='readonly',
+            relief=tk.FLAT,
+            bg='white',
+            fg=self.colors['text_dark']
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, ipadx=10)
+
+        tk.Button(
+            incra_input_frame,
+            text="📁 Selecionar",
+            command=lambda: self._selecionar_arquivo(self.incra_path, "INCRA"),
+            font=('Inter', 10, 'bold'),
+            bg='#F59E0B',
+            fg='white',
+            relief=tk.FLAT,
+            padx=20,
+            pady=8,
+            cursor='hand2'
+        ).pack(side=tk.RIGHT, padx=(10, 0))
+
+        # Seleção Projeto
+        projeto_card = tk.Frame(
+            content,
+            bg='#DBEAFE',
+            highlightthickness=2,
+            highlightbackground='#60A5FA'
+        )
+        projeto_card.pack(fill=tk.X, pady=10)
+
+        projeto_content = tk.Frame(projeto_card, bg='#DBEAFE')
+        projeto_content.pack(fill=tk.X, padx=20, pady=15)
+
+        tk.Label(
+            projeto_content,
+            text="📐  Planta/Projeto",
+            font=('Inter', 12, 'bold'),
+            fg='#1E40AF',
+            bg='#DBEAFE'
+        ).pack(anchor=tk.W, pady=(0, 10))
+
+        projeto_input_frame = tk.Frame(projeto_content, bg='#DBEAFE')
+        projeto_input_frame.pack(fill=tk.X)
+
+        tk.Entry(
+            projeto_input_frame,
+            textvariable=self.projeto_path,
+            font=('Inter', 10),
+            state='readonly',
+            relief=tk.FLAT,
+            bg='white',
+            fg=self.colors['text_dark']
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, ipadx=10)
+
+        tk.Button(
+            projeto_input_frame,
+            text="📁 Selecionar",
+            command=lambda: self._selecionar_arquivo(self.projeto_path, "Projeto"),
+            font=('Inter', 10, 'bold'),
+            bg='#3B82F6',
+            fg='white',
+            relief=tk.FLAT,
+            padx=20,
+            pady=8,
+            cursor='hand2'
+        ).pack(side=tk.RIGHT, padx=(10, 0))
+
+        # Botão de comparação
+        tk.Button(
+            content,
+            text="🔍  COMPARAR DOCUMENTOS",
+            command=self._comparar_manual,
+            font=('Inter', 14, 'bold'),
+            bg=self.colors['secondary'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=40,
+            pady=20,
+            cursor='hand2',
+            activebackground='#DB2777'
+        ).pack(pady=30)
 
     def _validar_numero(self, valor):
         """Valida entrada para aceitar apenas números."""
@@ -444,58 +793,77 @@ class VerificadorGeorreferenciamento:
         api_key = self.config_manager.get_api_key()
         if api_key:
             self.api_status_label.config(
-                text="✅ API Key configurada",
-                foreground='green'
+                text="✅ Configurada",
+                fg=self.colors['success']
             )
         else:
             self.api_status_label.config(
-                text="❌ API Key não configurada",
-                foreground='red'
+                text="⭕ Não configurada",
+                fg=self.colors['danger']
             )
 
     def _abrir_config_api(self):
         """Abre janela para configurar API key."""
         config_window = tk.Toplevel(self.root)
-        config_window.title("Configuração da API Key")
-        config_window.geometry("600x250")
+        config_window.title("⚙️ Configuração da API Key")
+        config_window.geometry("650x300")
+        config_window.configure(bg=self.colors['bg_card'])
         config_window.transient(self.root)
         config_window.grab_set()
 
-        main_frame = ttk.Frame(config_window, padding="20")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = tk.Frame(config_window, bg=self.colors['bg_card'])
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=30)
 
-        ttk.Label(
+        # Título
+        tk.Label(
             main_frame,
-            text="🔑 Configuração da API Key do Gemini",
-            style='Subtitle.TLabel'
+            text="🔑  Configuração da API Key do Gemini",
+            font=('Inter', 16, 'bold'),
+            fg=self.colors['primary'],
+            bg=self.colors['bg_card']
         ).pack(pady=(0, 10))
 
-        ttk.Label(
+        tk.Label(
             main_frame,
             text="Insira sua API key abaixo. Ela será salva de forma segura e não precisará ser inserida novamente.",
-            wraplength=500,
-            font=('Segoe UI', 9)
+            font=('Inter', 10),
+            fg=self.colors['text_medium'],
+            bg=self.colors['bg_card'],
+            wraplength=550
         ).pack(pady=10)
 
         # Campo de entrada
         api_var = tk.StringVar(value=self.config_manager.get_api_key())
 
-        entry_frame = ttk.Frame(main_frame)
+        entry_frame = tk.Frame(main_frame, bg=self.colors['bg_card'])
         entry_frame.pack(fill=tk.X, pady=20)
 
-        ttk.Label(entry_frame, text="API Key:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
+        tk.Label(
+            entry_frame,
+            text="API Key:",
+            font=('Inter', 11, 'bold'),
+            fg=self.colors['text_dark'],
+            bg=self.colors['bg_card']
+        ).pack(anchor=tk.W, pady=(0, 8))
 
-        api_entry = ttk.Entry(
+        api_entry = tk.Entry(
             entry_frame,
             textvariable=api_var,
-            font=('Segoe UI', 10),
-            show="*",
-            width=60
+            font=('Inter', 11),
+            show="●",
+            relief=tk.FLAT,
+            bg='#F3F4F6',
+            fg=self.colors['text_dark'],
+            insertbackground=self.colors['primary'],
+            borderwidth=2,
+            highlightthickness=2,
+            highlightcolor=self.colors['primary'],
+            highlightbackground=self.colors['border']
         )
-        api_entry.pack(fill=tk.X, pady=5)
+        api_entry.pack(fill=tk.X, ipady=10, ipadx=10)
 
         # Botões
-        btn_frame = ttk.Frame(main_frame)
+        btn_frame = tk.Frame(main_frame, bg=self.colors['bg_card'])
         btn_frame.pack(pady=20)
 
         def salvar_api():
@@ -503,23 +871,35 @@ class VerificadorGeorreferenciamento:
             if key:
                 self.config_manager.set_api_key(key)
                 self._carregar_api_key()
-                messagebox.showinfo("Sucesso", "API Key salva com sucesso!")
+                messagebox.showinfo("✅ Sucesso", "API Key salva com sucesso!")
                 config_window.destroy()
             else:
-                messagebox.showwarning("Aviso", "Por favor, insira uma API Key válida.")
+                messagebox.showwarning("⚠️ Aviso", "Por favor, insira uma API Key válida.")
 
-        ttk.Button(
+        tk.Button(
             btn_frame,
-            text="💾 Salvar",
+            text="💾  Salvar",
             command=salvar_api,
-            style='Action.TButton'
+            font=('Inter', 11, 'bold'),
+            bg=self.colors['success'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=25,
+            pady=10,
+            cursor='hand2'
         ).pack(side=tk.LEFT, padx=5)
 
-        ttk.Button(
+        tk.Button(
             btn_frame,
-            text="❌ Cancelar",
+            text="❌  Cancelar",
             command=config_window.destroy,
-            style='Action.TButton'
+            font=('Inter', 11, 'bold'),
+            bg=self.colors['text_medium'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=25,
+            pady=10,
+            cursor='hand2'
         ).pack(side=tk.LEFT, padx=5)
 
     def _selecionar_arquivo(self, variavel, tipo):
@@ -531,20 +911,28 @@ class VerificadorGeorreferenciamento:
         if filename:
             variavel.set(filename)
 
-    def _atualizar_status(self, mensagem: str, cor: str = 'black'):
+    def _atualizar_status(self, mensagem: str):
         """Atualiza a barra de status."""
-        self.status_label.config(text=mensagem)
+        # Detectar tipo de mensagem e ajustar cor
+        if "✅" in mensagem or "sucesso" in mensagem.lower():
+            cor = self.colors['success']
+        elif "❌" in mensagem or "erro" in mensagem.lower():
+            cor = self.colors['danger']
+        elif "🔄" in mensagem or "processando" in mensagem.lower():
+            cor = self.colors['info']
+        else:
+            cor = self.colors['text_dark']
+
+        self.status_label.config(text=mensagem, fg=cor)
         self.root.update_idletasks()
 
     def _desabilitar_botoes(self):
         """Desabilita botões durante o processamento."""
-        self.btn_comparar_manual.config(state='disabled')
-        self.btn_iniciar_automatico.config(state='disabled')
+        self.btn_iniciar_automatico.config(state='disabled', bg=self.colors['text_light'])
 
     def _habilitar_botoes(self):
         """Reabilita botões após o processamento."""
-        self.btn_comparar_manual.config(state='normal')
-        self.btn_iniciar_automatico.config(state='normal')
+        self.btn_iniciar_automatico.config(state='normal', bg=self.colors['primary'])
 
     # ========== MODO MANUAL ==========
 
@@ -676,11 +1064,10 @@ class VerificadorGeorreferenciamento:
 
     def _buscar_arquivo_tiff(self) -> Optional[str]:
         """Busca arquivo TIFF na rede baseado no número de prenotação."""
-        # Obter número e formatar
         numero = int(self.numero_prenotacao.get())
-        numero_formatado = f"{numero:08d}"  # 8 dígitos com zeros à esquerda
+        numero_formatado = f"{numero:08d}"
 
-        # Calcular subpasta (milhar superior)
+        # Calcular subpasta
         milhar = math.ceil(numero / 1000) * 1000
         subpasta_formatada = f"{milhar:08d}"
 
@@ -696,7 +1083,7 @@ class VerificadorGeorreferenciamento:
         return None
 
     def _converter_tiff_para_pdf(self, tiff_path: str) -> str:
-        """Copia TIFF para Downloads e converte para PDF multi-página."""
+        """Copia TIFF para Downloads e converte para PDF."""
         downloads_dir = Path.home() / "Downloads" / "conferencia_geo_temp"
         downloads_dir.mkdir(parents=True, exist_ok=True)
 
@@ -717,7 +1104,7 @@ class VerificadorGeorreferenciamento:
                 images.append(img.copy().convert('RGB'))
                 img.seek(img.tell() + 1)
         except EOFError:
-            pass  # Fim das páginas
+            pass
 
         # Salvar como PDF
         if images:
@@ -735,22 +1122,18 @@ class VerificadorGeorreferenciamento:
         output_dir = Path.home() / "Downloads" / "conferencia_geo_temp"
         output_pdf = output_dir / "memorial_incra_extraido.pdf"
 
-        # Usar Gemini para identificar as páginas relevantes
+        # Usar Gemini
         api_key = self.config_manager.get_api_key()
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
 
-        # Converter PDF para imagens
         images = convert_from_path(pdf_path, dpi=150)
-
         paginas_encontradas = []
 
         for i, img in enumerate(images):
-            # Salvar imagem temporária
             temp_img_path = output_dir / f"temp_page_{i}.jpg"
             img.save(temp_img_path, 'JPEG')
 
-            # Analisar com Gemini
             prompt = """
             Analise esta imagem e responda apenas com 'SIM' ou 'NAO':
             Esta página contém o Memorial Descritivo do INCRA?
@@ -760,7 +1143,6 @@ class VerificadorGeorreferenciamento:
             - Texto: "INSTITUTO NACIONAL DE COLONIZAÇÃO E REFORMA AGRÁRIA"
             - Texto: "MEMORIAL DESCRITIVO"
             - Tabela com colunas: "VÉRTICE", "SEGMENTO VANTE", "Confrontações"
-            - Texto: "DESCRIÇÃO DA PARCELA"
 
             Responda apenas: SIM ou NAO
             """
@@ -776,10 +1158,9 @@ class VerificadorGeorreferenciamento:
             except Exception as e:
                 print(f"Erro ao analisar página {i}: {e}")
 
-            # Limpar imagem temporária
             temp_img_path.unlink()
 
-        # Extrair páginas encontradas para novo PDF
+        # Extrair páginas
         if paginas_encontradas:
             with open(pdf_path, 'rb') as file:
                 reader = PyPDF2.PdfReader(file)
@@ -798,31 +1179,26 @@ class VerificadorGeorreferenciamento:
         output_dir = Path.home() / "Downloads" / "conferencia_geo_temp"
         output_pdf = output_dir / "projeto_extraido.pdf"
 
-        # Usar Gemini para identificar as páginas relevantes
+        # Usar Gemini
         api_key = self.config_manager.get_api_key()
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
 
-        # Converter PDF para imagens
         images = convert_from_path(pdf_path, dpi=150)
-
         paginas_encontradas = []
 
         for i, img in enumerate(images):
-            # Salvar imagem temporária
             temp_img_path = output_dir / f"temp_page_{i}.jpg"
             img.save(temp_img_path, 'JPEG')
 
-            # Analisar com Gemini
             prompt = """
             Analise esta imagem e responda apenas com 'SIM' ou 'NAO':
             Esta página contém a Planta/Projeto de Georreferenciamento?
 
             Características da Planta/Projeto:
             - Títulos: "PLANTA DO IMÓVEL GEORREFERENCIADO" ou "PLANTA DE SITUAÇÃO"
-            - Identificadores: "Código INCRA:", "Matrícula nº:", "Responsável técnico:", "Propriedade:", "Município:"
+            - Identificadores: "Código INCRA:", "Matrícula nº:", "Responsável técnico:"
             - Tabela com coordenadas (colunas: "Código", "Longitude", "Latitude")
-            - Desenho/mapa com vértices (ex: AKE-M-1028)
 
             Responda apenas: SIM ou NAO
             """
@@ -838,10 +1214,9 @@ class VerificadorGeorreferenciamento:
             except Exception as e:
                 print(f"Erro ao analisar página {i}: {e}")
 
-            # Limpar imagem temporária
             temp_img_path.unlink()
 
-        # Extrair páginas encontradas para novo PDF
+        # Extrair páginas
         if paginas_encontradas:
             with open(pdf_path, 'rb') as file:
                 reader = PyPDF2.PdfReader(file)
@@ -859,18 +1234,15 @@ class VerificadorGeorreferenciamento:
         """Salva backups dos PDFs extraídos."""
         docs_dir = Path.home() / "Documentos" / "Relatórios INCRA"
 
-        # Criar diretórios
         incra_dir = docs_dir / "PDF_INCRAS"
         projeto_dir = docs_dir / "PDF_PLANTAS"
 
         incra_dir.mkdir(parents=True, exist_ok=True)
         projeto_dir.mkdir(parents=True, exist_ok=True)
 
-        # Nome baseado na prenotação
         numero = self.numero_prenotacao.get()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Copiar PDFs
         if self.pdf_extraido_incra:
             dest_incra = incra_dir / f"INCRA_{numero}_{timestamp}.pdf"
             shutil.copy2(self.pdf_extraido_incra, dest_incra)
@@ -881,74 +1253,62 @@ class VerificadorGeorreferenciamento:
 
     def _gerar_previews(self):
         """Gera thumbnails dos documentos extraídos."""
-        # Preview INCRA
         if self.pdf_extraido_incra and Path(self.pdf_extraido_incra).exists():
             images = convert_from_path(self.pdf_extraido_incra, dpi=100, first_page=1, last_page=1)
             if images:
                 self.preview_incra_image = images[0]
-                # Redimensionar para thumbnail
                 self.preview_incra_image.thumbnail((300, 400))
 
                 photo = ImageTk.PhotoImage(self.preview_incra_image)
                 self.incra_preview_label.config(image=photo)
-                self.incra_preview_label.image = photo  # Manter referência
+                self.incra_preview_label.image = photo
 
-        # Preview PROJETO
         if self.pdf_extraido_projeto and Path(self.pdf_extraido_projeto).exists():
             images = convert_from_path(self.pdf_extraido_projeto, dpi=100, first_page=1, last_page=1)
             if images:
                 self.preview_projeto_image = images[0]
-                # Redimensionar para thumbnail
                 self.preview_projeto_image.thumbnail((300, 400))
 
                 photo = ImageTk.PhotoImage(self.preview_projeto_image)
                 self.projeto_preview_label.config(image=photo)
-                self.projeto_preview_label.image = photo  # Manter referência
+                self.projeto_preview_label.image = photo
 
     def _confirmar_documentos_automaticos(self):
         """Usuário confirmou documentos - prosseguir com comparação."""
-        # Usar os PDFs extraídos como arquivos de entrada
         self.incra_path.set(self.pdf_extraido_incra)
         self.projeto_path.set(self.pdf_extraido_projeto)
 
-        # Ocultar preview
         self.preview_frame.pack_forget()
 
-        # Executar comparação
         self._comparar_manual()
 
     def _alternar_para_manual(self):
-        """Usuário optou por fazer manual - alternar para aba manual."""
+        """Usuário optou por fazer manual."""
         self.preview_frame.pack_forget()
-        self.notebook.select(self.tab_manual)
+        self._selecionar_modo("manual")
         self._habilitar_botoes()
         messagebox.showinfo(
             "Modo Manual",
-            "Selecione manualmente os arquivos corretos na aba 'Modo Manual'."
+            "Selecione manualmente os arquivos corretos no Modo Manual."
         )
 
     # ========== EXTRAÇÃO E COMPARAÇÃO ==========
 
     def _extrair_pdf_para_excel(self, pdf_path: str, tipo: str = "normal") -> tuple[str, Dict]:
-        """
-        Extrai dados de um PDF memorial para Excel usando Gemini API.
-        """
+        """Extrai dados de um PDF memorial para Excel."""
         try:
             api_key = self.config_manager.get_api_key()
             genai.configure(api_key=api_key)
 
-            # Criar diretório temporário
             output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
             output_dir.mkdir(parents=True, exist_ok=True)
 
             if not output_dir.exists():
                 raise RuntimeError(f"Não foi possível criar o diretório: {output_dir}")
 
-            # Nome do arquivo Excel
             nome_base = Path(pdf_path).stem
             excel_path = output_dir / f"{nome_base}_extraido.xlsx"
 
-            # Extrair dados usando funções existentes
             if tipo == "incra":
                 dados = extrair_memorial_incra(pdf_path, api_key)
             else:
@@ -957,7 +1317,6 @@ class VerificadorGeorreferenciamento:
             if not dados or 'data' not in dados:
                 raise ValueError("Nenhum dado foi extraído do PDF")
 
-            # Criar arquivo Excel
             create_excel_file(dados, str(excel_path))
 
             if not excel_path.exists():
@@ -973,55 +1332,39 @@ class VerificadorGeorreferenciamento:
             raise RuntimeError(error_msg) from e
 
     def _normalizar_coordenada(self, coord: str) -> str:
-        """
-        Normaliza coordenadas para comparação, ignorando diferenças de formato.
-        """
+        """Normaliza coordenadas para comparação."""
         if not coord:
             return ""
 
         coord = str(coord).strip()
-
-        # Normalizar caracteres Unicode especiais
         coord = coord.replace("′", "'").replace("″", '"')
 
-        # Remover "-" do início (INCRA)
         if coord.startswith("-"):
             coord = coord[1:].strip()
 
-        # Remover " W" ou " S" do final (PROJETO)
         coord = coord.replace(" W", "").replace(" S", "").strip()
-
-        # Remover aspas e espaços extras
         coord = coord.strip().strip('"').strip("'").strip()
 
         return coord
 
     def _limpar_string(self, valor) -> str:
-        """
-        Limpa qualquer valor convertendo para string e removendo espaços em branco.
-        Converte pontos decimais em vírgulas para padronização numérica brasileira.
-        """
+        """Limpa strings e converte pontos para vírgulas."""
         if valor is None:
             return ""
 
         valor_limpo = str(valor).strip()
 
-        # Remover espaços duplos internos
         while "  " in valor_limpo:
             valor_limpo = valor_limpo.replace("  ", " ")
 
-        # Converter ponto decimal para vírgula (padrão brasileiro)
         valor_limpo = valor_limpo.replace(".", ",")
 
         return valor_limpo
 
     def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
-        """
-        Constrói relatório HTML comparando dados estruturados.
-        """
+        """Constrói relatório HTML comparando dados estruturados."""
         html = []
 
-        # Cabeçalho HTML
         html.append("""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1035,7 +1378,7 @@ class VerificadorGeorreferenciamento:
             box-sizing: border-box;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
         }
@@ -1142,7 +1485,6 @@ class VerificadorGeorreferenciamento:
         <p class="subtitle">Sistema Profissional de Análise e Verificação v4.0</p>
 """)
 
-        # Informações do relatório
         html.append(f"""
         <div class="info-box">
             <p><strong>📅 Data:</strong> {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}</p>
@@ -1150,7 +1492,7 @@ class VerificadorGeorreferenciamento:
         </div>
 """)
 
-        # Carregar dados dos Excel
+        # Carregar dados
         wb_incra = load_workbook(self.incra_excel_path)
         ws_incra = wb_incra.active
         dados_incra = list(ws_incra.iter_rows(values_only=True))
@@ -1159,31 +1501,24 @@ class VerificadorGeorreferenciamento:
         ws_projeto = wb_projeto.active
         dados_projeto = list(ws_projeto.iter_rows(values_only=True))
 
-        # Contadores
         identicos_vertice = 0
         diferencas_vertice = 0
         identicos_segmento = 0
         diferencas_segmento = 0
 
-        # ===== SEÇÃO 1: VÉRTICE =====
-        html.append('<h2 class="section-title">📐 COMPARAÇÃO: VÉRTICE (Código, Longitude, Latitude, Altitude)</h2>')
+        # VÉRTICE
+        html.append('<h2 class="section-title">📐 COMPARAÇÃO: VÉRTICE</h2>')
         html.append('<table>')
         html.append('<thead><tr>')
-        html.append('<th>Linha</th>')
-        html.append('<th>Campo</th>')
-        html.append('<th>INCRA</th>')
-        html.append('<th>PROJETO</th>')
-        html.append('<th>Status</th>')
-        html.append('</tr></thead>')
-        html.append('<tbody>')
+        html.append('<th>Linha</th><th>Campo</th><th>INCRA</th><th>PROJETO</th><th>Status</th>')
+        html.append('</tr></thead><tbody>')
 
         max_rows = max(len(dados_incra), len(dados_projeto))
 
-        for i in range(1, max_rows):  # Pular cabeçalho
+        for i in range(1, max_rows):
             incra_row = dados_incra[i] if i < len(dados_incra) else []
             projeto_row = dados_projeto[i] if i < len(dados_projeto) else []
 
-            # Extrair e limpar dados (colunas 0-3: Código, Longitude, Latitude, Altitude)
             codigo_incra = self._limpar_string(incra_row[0] if len(incra_row) > 0 else "")
             codigo_projeto = self._limpar_string(projeto_row[0] if len(projeto_row) > 0 else "")
 
@@ -1196,7 +1531,6 @@ class VerificadorGeorreferenciamento:
             alt_incra = self._limpar_string(incra_row[3] if len(incra_row) > 3 else "")
             alt_projeto = self._limpar_string(projeto_row[3] if len(projeto_row) > 3 else "")
 
-            # Comparar cada campo
             campos = [
                 ("Código", codigo_incra, codigo_projeto),
                 ("Longitude", long_incra, long_projeto),
@@ -1214,32 +1548,23 @@ class VerificadorGeorreferenciamento:
                     diferencas_vertice += 1
 
                 html.append(f'<tr class="{status_classe}">')
-                html.append(f'<td>{i}</td>')
-                html.append(f'<td><strong>{campo}</strong></td>')
-                html.append(f'<td>{val_incra}</td>')
-                html.append(f'<td>{val_projeto}</td>')
-                html.append(f'<td>{status_texto}</td>')
+                html.append(f'<td>{i}</td><td><strong>{campo}</strong></td>')
+                html.append(f'<td>{val_incra}</td><td>{val_projeto}</td><td>{status_texto}</td>')
                 html.append('</tr>')
 
         html.append('</tbody></table>')
 
-        # ===== SEÇÃO 2: SEGMENTO VANTE =====
-        html.append('<h2 class="section-title">🔄 COMPARAÇÃO: SEGMENTO VANTE (Código, Azimute, Distância)</h2>')
+        # SEGMENTO VANTE
+        html.append('<h2 class="section-title">🔄 COMPARAÇÃO: SEGMENTO VANTE</h2>')
         html.append('<table>')
         html.append('<thead><tr>')
-        html.append('<th>Linha</th>')
-        html.append('<th>Campo</th>')
-        html.append('<th>INCRA</th>')
-        html.append('<th>PROJETO</th>')
-        html.append('<th>Status</th>')
-        html.append('</tr></thead>')
-        html.append('<tbody>')
+        html.append('<th>Linha</th><th>Campo</th><th>INCRA</th><th>PROJETO</th><th>Status</th>')
+        html.append('</tr></thead><tbody>')
 
         for i in range(1, max_rows):
             incra_row = dados_incra[i] if i < len(dados_incra) else []
             projeto_row = dados_projeto[i] if i < len(dados_projeto) else []
 
-            # Extrair e limpar dados (colunas 4-6: Código, Azimute, Distância)
             cod_seg_incra = self._limpar_string(incra_row[4] if len(incra_row) > 4 else "")
             cod_seg_projeto = self._limpar_string(projeto_row[4] if len(projeto_row) > 4 else "")
 
@@ -1249,7 +1574,6 @@ class VerificadorGeorreferenciamento:
             dist_incra = self._limpar_string(incra_row[6] if len(incra_row) > 6 else "")
             dist_projeto = self._limpar_string(projeto_row[6] if len(projeto_row) > 6 else "")
 
-            # Comparar cada campo
             campos = [
                 ("Código", cod_seg_incra, cod_seg_projeto),
                 ("Azimute", azim_incra, azim_projeto),
@@ -1266,42 +1590,31 @@ class VerificadorGeorreferenciamento:
                     diferencas_segmento += 1
 
                 html.append(f'<tr class="{status_classe}">')
-                html.append(f'<td>{i}</td>')
-                html.append(f'<td><strong>{campo}</strong></td>')
-                html.append(f'<td>{val_incra}</td>')
-                html.append(f'<td>{val_projeto}</td>')
-                html.append(f'<td>{status_texto}</td>')
+                html.append(f'<td>{i}</td><td><strong>{campo}</strong></td>')
+                html.append(f'<td>{val_incra}</td><td>{val_projeto}</td><td>{status_texto}</td>')
                 html.append('</tr>')
 
         html.append('</tbody></table>')
 
-        # ===== RESUMO =====
+        # RESUMO
         identicos_total = identicos_vertice + identicos_segmento
         diferencas_total = diferencas_vertice + diferencas_segmento
 
         html.append(f"""
         <div class="resumo">
             <h2>📊 RESUMO DA COMPARAÇÃO</h2>
-
-            <h4>📍 VÉRTICE (Código, Longitude, Latitude, Altitude):</h4>
+            <h4>📍 VÉRTICE:</h4>
             <p>✅ Idênticos: <strong>{identicos_vertice}</strong></p>
             <p>❌ Diferentes: <strong>{diferencas_vertice}</strong></p>
-
-            <h4>🔄 SEGMENTO VANTE (Código, Azimute, Distância):</h4>
+            <h4>🔄 SEGMENTO VANTE:</h4>
             <p>✅ Idênticos: <strong>{identicos_segmento}</strong></p>
             <p>❌ Diferentes: <strong>{diferencas_segmento}</strong></p>
-
             <h4>🎯 TOTAL GERAL:</h4>
             <p>✅ Total idênticos: <strong>{identicos_total}</strong></p>
             <p>❌ Total diferentes: <strong>{diferencas_total}</strong></p>
         </div>
-""")
-
-        # Rodapé
-        html.append("""
         <div class="rodape">
             <p>Relatório gerado automaticamente pelo Sistema de Verificação INCRA v4.0</p>
-            <p>© 2024 - Todos os direitos reservados</p>
         </div>
     </div>
 </body>
@@ -1312,20 +1625,16 @@ class VerificadorGeorreferenciamento:
 
     def _salvar_e_abrir_relatorio(self, conteudo_html: str):
         """Salva relatório automaticamente e abre no navegador."""
-        # Criar diretório se não existir
         relatorios_dir = Path.home() / "Documentos" / "Relatórios INCRA"
         relatorios_dir.mkdir(parents=True, exist_ok=True)
 
-        # Nome do arquivo
         numero = self.numero_prenotacao.get()
         nome_arquivo = f"Relatório_INCRA_{numero}.html"
         caminho_completo = relatorios_dir / nome_arquivo
 
-        # Salvar arquivo
         with open(caminho_completo, 'w', encoding='utf-8') as f:
             f.write(conteudo_html)
 
-        # Abrir no navegador
         webbrowser.open(f'file://{caminho_completo}')
 
         self._atualizar_status(f"✅ Relatório salvo: {caminho_completo}")

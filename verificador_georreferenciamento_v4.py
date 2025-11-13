@@ -224,7 +224,7 @@ class VerificadorGeorreferenciamento:
 
         # Empacotar scrollbar e canvas
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=25)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Criar janela no canvas
         canvas_frame = canvas.create_window((0, 0), window=main_frame, anchor="nw")
@@ -232,11 +232,14 @@ class VerificadorGeorreferenciamento:
         # Atualizar scrollregion quando o frame mudar de tamanho
         def on_frame_configure(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
-            # Ajustar largura do frame ao canvas
-            canvas_width = event.width
-            canvas.itemconfig(canvas_frame, width=canvas_width)
 
         main_frame.bind("<Configure>", on_frame_configure)
+
+        # Atualizar largura do frame quando o canvas mudar de tamanho
+        def on_canvas_configure(event):
+            canvas.itemconfig(canvas_frame, width=event.width - 10)
+
+        canvas.bind("<Configure>", on_canvas_configure)
 
         # Bind scroll do mouse
         def on_mousewheel(event):
@@ -246,7 +249,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== CABEÇALHO COM DESIGN MODERNO =====
         header_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])
-        header_frame.pack(fill=tk.X, pady=(0, 25))
+        header_frame.pack(fill=tk.X, pady=(0, 25), padx=25)
 
         # Título com emoji grande
         title_container = tk.Frame(header_frame, bg=self.colors['bg_light'])
@@ -276,7 +279,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== BARRA DE FERRAMENTAS COM CARDS =====
         toolbar_card = self._criar_card(main_frame)
-        toolbar_card.pack(fill=tk.X, pady=(0, 20))
+        toolbar_card.pack(fill=tk.X, pady=(0, 20), padx=25)
 
         toolbar_content = tk.Frame(toolbar_card, bg=self.colors['bg_card'])
         toolbar_content.pack(fill=tk.X, padx=20, pady=15)
@@ -360,7 +363,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== SELETOR DE MODO (CARDS GRANDES E BONITOS) =====
         modo_card = self._criar_card(main_frame)
-        modo_card.pack(fill=tk.X, pady=(0, 20))
+        modo_card.pack(fill=tk.X, pady=(0, 20), padx=25)
 
         modo_content = tk.Frame(modo_card, bg=self.colors['bg_card'])
         modo_content.pack(fill=tk.X, padx=20, pady=20)
@@ -401,7 +404,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== CONTEÚDO DO MODO SELECIONADO =====
         self.content_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])
-        self.content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        self.content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20), padx=25)
 
         # Criar ambos os modos (esconder um deles)
         self._criar_modo_automatico_content()
@@ -412,7 +415,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== ÁREA DE RESULTADOS =====
         result_card = self._criar_card(main_frame)
-        result_card.pack(fill=tk.BOTH, expand=True)
+        result_card.pack(fill=tk.BOTH, expand=True, padx=25)
 
         result_content = tk.Frame(result_card, bg=self.colors['bg_card'])
         result_content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
@@ -443,7 +446,7 @@ class VerificadorGeorreferenciamento:
 
         # ===== BARRA DE STATUS =====
         status_frame = tk.Frame(main_frame, bg=self.colors['bg_card'], height=40)
-        status_frame.pack(fill=tk.X, pady=(15, 0))
+        status_frame.pack(fill=tk.X, pady=(15, 25), padx=25)
 
         self.status_label = tk.Label(
             status_frame,

@@ -212,40 +212,47 @@ class VerificadorGeorreferenciamento:
     def _criar_interface(self):
         """Cria todos os elementos da interface gráfica."""
 
-        # Criar Canvas com Scrollbar para scroll vertical
-        canvas = tk.Canvas(self.root, bg=self.colors['bg_light'], highlightthickness=0)
-        scrollbar = tk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+        # Container principal com scrollbar
+        container = tk.Frame(self.root, bg=self.colors['bg_light'])
+        container.pack(fill=tk.BOTH, expand=True)
 
-        # Frame principal dentro do canvas
+        # Canvas e Scrollbar
+        canvas = tk.Canvas(container, bg=self.colors['bg_light'], highlightthickness=0)
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+
+        # Frame scrollável dentro do canvas
         main_frame = tk.Frame(canvas, bg=self.colors['bg_light'])
+
+        # Posicionar scrollbar e canvas
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Criar window no canvas
+        canvas_window = canvas.create_window((0, 0), window=main_frame, anchor="nw")
 
         # Configurar scroll
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Empacotar scrollbar e canvas
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # Criar janela no canvas
-        canvas_frame = canvas.create_window((0, 0), window=main_frame, anchor="nw")
-
-        # Atualizar scrollregion quando o frame mudar de tamanho
-        def on_frame_configure(event):
+        # Atualizar região de scroll quando o conteúdo mudar
+        def configure_scroll(event=None):
+            canvas.update_idletasks()
             canvas.configure(scrollregion=canvas.bbox("all"))
+            # Ajustar largura do main_frame para preencher o canvas
+            canvas_width = canvas.winfo_width()
+            if canvas_width > 1:  # Só atualizar se o canvas tiver largura válida
+                canvas.itemconfig(canvas_window, width=canvas_width)
 
-        main_frame.bind("<Configure>", on_frame_configure)
+        main_frame.bind("<Configure>", configure_scroll)
+        canvas.bind("<Configure>", configure_scroll)
 
-        # Atualizar largura do frame quando o canvas mudar de tamanho
-        def on_canvas_configure(event):
-            canvas.itemconfig(canvas_frame, width=event.width - 10)
-
-        canvas.bind("<Configure>", on_canvas_configure)
-
-        # Bind scroll do mouse
+        # Scroll com mouse wheel
         def on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
         canvas.bind_all("<MouseWheel>", on_mousewheel)
+
+        # Forçar atualização inicial após 100ms
+        self.root.after(100, configure_scroll)
 
         # ===== CABEÇALHO COM DESIGN MODERNO =====
         header_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])

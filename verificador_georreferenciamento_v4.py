@@ -212,9 +212,37 @@ class VerificadorGeorreferenciamento:
     def _criar_interface(self):
         """Cria todos os elementos da interface gráfica."""
 
-        # Frame principal
-        main_frame = tk.Frame(self.root, bg=self.colors['bg_light'])
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
+        # Criar Canvas com Scrollbar para scroll vertical
+        canvas = tk.Canvas(self.root, bg=self.colors['bg_light'], highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+
+        # Frame principal dentro do canvas
+        main_frame = tk.Frame(canvas, bg=self.colors['bg_light'])
+
+        # Configurar scroll
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Empacotar scrollbar e canvas
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=25, pady=25)
+
+        # Criar janela no canvas
+        canvas_frame = canvas.create_window((0, 0), window=main_frame, anchor="nw")
+
+        # Atualizar scrollregion quando o frame mudar de tamanho
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            # Ajustar largura do frame ao canvas
+            canvas_width = event.width
+            canvas.itemconfig(canvas_frame, width=canvas_width)
+
+        main_frame.bind("<Configure>", on_frame_configure)
+
+        # Bind scroll do mouse
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
 
         # ===== CABEÇALHO COM DESIGN MODERNO =====
         header_frame = tk.Frame(main_frame, bg=self.colors['bg_light'])
@@ -268,7 +296,10 @@ class VerificadorGeorreferenciamento:
             padx=15,
             pady=8,
             cursor='hand2',
-            activebackground=self.colors['primary']
+            activebackground=self.colors['primary'],
+            highlightthickness=2,
+            highlightbackground=self.colors['info'],
+            highlightcolor=self.colors['primary_dark']
         ).pack()
 
         # Status API
@@ -315,14 +346,12 @@ class VerificadorGeorreferenciamento:
             textvariable=self.numero_prenotacao,
             font=('Inter', 13, 'bold'),
             width=15,
-            relief=tk.FLAT,
+            relief=tk.SOLID,
             bg='#F3F4F6',
             fg=self.colors['primary'],
             insertbackground=self.colors['primary'],
             borderwidth=2,
-            highlightthickness=2,
-            highlightcolor=self.colors['primary'],
-            highlightbackground=self.colors['border']
+            highlightthickness=0
         )
         prenotacao_entry.pack(pady=(5, 0), ipady=6, ipadx=8)
 
@@ -401,16 +430,14 @@ class VerificadorGeorreferenciamento:
             result_content,
             font=('Consolas', 10),
             wrap=tk.WORD,
-            relief=tk.FLAT,
+            relief=tk.SOLID,
             bg='#F9FAFB',
             fg=self.colors['text_dark'],
             insertbackground=self.colors['primary'],
             selectbackground=self.colors['primary'],
             selectforeground='white',
-            borderwidth=0,
-            highlightthickness=1,
-            highlightcolor=self.colors['border'],
-            highlightbackground=self.colors['border']
+            borderwidth=2,
+            highlightthickness=0
         )
         self.resultado_text.pack(fill=tk.BOTH, expand=True, ipady=10, ipadx=10)
 
@@ -705,9 +732,11 @@ class VerificadorGeorreferenciamento:
             textvariable=self.incra_path,
             font=('Inter', 10),
             state='readonly',
-            relief=tk.FLAT,
+            relief=tk.SOLID,
             bg='white',
-            fg=self.colors['text_dark']
+            fg=self.colors['text_dark'],
+            borderwidth=2,
+            highlightthickness=0
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, ipadx=10)
 
         tk.Button(
@@ -751,9 +780,11 @@ class VerificadorGeorreferenciamento:
             textvariable=self.projeto_path,
             font=('Inter', 10),
             state='readonly',
-            relief=tk.FLAT,
+            relief=tk.SOLID,
             bg='white',
-            fg=self.colors['text_dark']
+            fg=self.colors['text_dark'],
+            borderwidth=2,
+            highlightthickness=0
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, ipadx=10)
 
         tk.Button(
@@ -851,14 +882,12 @@ class VerificadorGeorreferenciamento:
             textvariable=api_var,
             font=('Inter', 11),
             show="●",
-            relief=tk.FLAT,
+            relief=tk.SOLID,
             bg='#F3F4F6',
             fg=self.colors['text_dark'],
             insertbackground=self.colors['primary'],
             borderwidth=2,
-            highlightthickness=2,
-            highlightcolor=self.colors['primary'],
-            highlightbackground=self.colors['border']
+            highlightthickness=0
         )
         api_entry.pack(fill=tk.X, ipady=10, ipadx=10)
 

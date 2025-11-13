@@ -4,7 +4,7 @@
 Verificador de Consistência de Documentos de Georreferenciamento
 Aplicação GUI para cartórios - Análise multimodal com Gemini AI
 Autor: Sistema Automatizado
-Versão: 1.0
+Versão: 3.0 - Com extração para Excel integrada
 """
 
 import os
@@ -14,17 +14,27 @@ from tkinter import filedialog, messagebox, scrolledtext
 from tkinter import ttk
 from pathlib import Path
 import threading
-from typing import List, Optional
+from typing import List, Optional, Dict
+import json
+import tempfile
 
 try:
     from pdf2image import convert_from_path
     from PIL import Image, ImageTk
     import google.generativeai as genai
+    from openpyxl import load_workbook
+    # Importar funções de extração do script existente
+    from process_memorial_descritivo_v2 import (
+        extract_table_from_pdf,
+        extrair_memorial_incra,
+        create_excel_file
+    )
 except ImportError as e:
     print(f"❌ Erro: Biblioteca necessária não encontrada: {e}")
     print("\nInstale as dependências com:")
-    print("pip install pdf2image Pillow google-generativeai --break-system-packages")
+    print("pip install pdf2image Pillow google-generativeai openpyxl --break-system-packages")
     print("\nNota: Também é necessário ter o 'poppler-utils' instalado no sistema.")
+    print("Certifique-se de que process_memorial_descritivo_v2.py está no mesmo diretório.")
     sys.exit(1)
 
 
@@ -44,9 +54,15 @@ class VerificadorGeorreferenciamento:
         self.projeto_path = tk.StringVar()
         self.api_key = tk.StringVar()
 
-        # Variáveis para armazenar imagens processadas
+        # Variáveis para armazenar imagens processadas (para comparação visual)
         self.incra_images: List[Image.Image] = []
         self.projeto_images: List[Image.Image] = []
+
+        # Variáveis para armazenar dados extraídos (nova funcionalidade v3)
+        self.incra_excel_path: Optional[str] = None
+        self.projeto_excel_path: Optional[str] = None
+        self.incra_data: Optional[Dict] = None
+        self.projeto_data: Optional[Dict] = None
         
         self._criar_interface()
         
@@ -84,58 +100,52 @@ class VerificadorGeorreferenciamento:
         
         # ===== SEÇÃO: BOTÕES DE AÇÃO =====
         ttk.Separator(main_frame, orient='horizontal').grid(
-            row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
-        
+            row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=7, column=0, columnspan=2, pady=15)
-        
+        button_frame.grid(row=6, column=0, columnspan=2, pady=15)
+
         # Estilo para botões maiores
         style = ttk.Style()
         style.configure('Large.TButton', font=('Arial', 12, 'bold'), padding=10)
-        
-        # Botão de Comparação com IA
-        botoes_ia_frame = ttk.Frame(button_frame)
-        botoes_ia_frame.pack(pady=5)
 
+        # Botão único: INCRA vs. Projeto
         self.btn_comparar = ttk.Button(
-            botoes_ia_frame,
-            text="🔍  Comparar INCRA vs. Projeto",
-            command=self._comparar_documentos,
+            button_frame,
+            text="📐  COMPARAR: INCRA vs. Projeto",
+            command=self._comparar_projeto,
             style='Large.TButton',
-            width=35
+            width=40
         )
         self.btn_comparar.pack(pady=5)
 
-        # Botão de Comparação Manual
-        botoes_manual_frame = ttk.Frame(button_frame)
-        botoes_manual_frame.pack(pady=5)
-        
+        # Comparação Visual Manual
         self.btn_comparacao_manual = ttk.Button(
-            botoes_manual_frame,
+            button_frame,
             text="👁️  Comparação Visual Manual",
             command=self._abrir_comparacao_manual,
             style='Large.TButton',
             width=40
         )
-        self.btn_comparacao_manual.pack()
+        self.btn_comparacao_manual.pack(pady=5)
         
         # ===== SEÇÃO: ÁREA DE RESULTADOS =====
         ttk.Separator(main_frame, orient='horizontal').grid(
-            row=8, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+            row=7, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
         
-        ttk.Label(main_frame, text="📋 Relatório de Comparação:", 
-                 font=('Arial', 14, 'bold')).grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
-        
+        ttk.Label(main_frame, text="📋 Relatório de Comparação:",
+                 font=('Arial', 14, 'bold')).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+
         # Frame para área de texto com barra de rolagem
         text_frame = ttk.Frame(main_frame)
-        text_frame.grid(row=10, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        text_frame.grid(row=9, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
-        
+
         # Área de texto com scroll e fonte maior
         self.resultado_text = scrolledtext.ScrolledText(
-            text_frame, 
-            width=85, 
+            text_frame,
+            width=85,
             height=22,
             wrap=tk.WORD,
             font=('Consolas', 11),
@@ -143,10 +153,10 @@ class VerificadorGeorreferenciamento:
             fg='#000000'
         )
         self.resultado_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
         # Botão para salvar HTML
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=11, column=0, columnspan=2, pady=(5, 0))
+        btn_frame.grid(row=10, column=0, columnspan=2, pady=(5, 0))
         
         self.btn_salvar_html = ttk.Button(
             btn_frame,
@@ -157,12 +167,12 @@ class VerificadorGeorreferenciamento:
         self.btn_salvar_html.pack(side=tk.LEFT, padx=5)
         
         # Configurar expansão da área de texto
-        main_frame.rowconfigure(10, weight=1)
-        
+        main_frame.rowconfigure(9, weight=1)
+
         # Barra de status com fonte maior
-        self.status_label = ttk.Label(main_frame, text="✅ Sistema Pronto para Uso", 
+        self.status_label = ttk.Label(main_frame, text="✅ Sistema Pronto para Uso",
                                       relief=tk.SUNKEN, anchor=tk.W, font=('Arial', 11))
-        self.status_label.grid(row=12, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.status_label.grid(row=11, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # Variável para armazenar o HTML do último relatório
         self.ultimo_relatorio_html = ""
@@ -218,24 +228,25 @@ class VerificadorGeorreferenciamento:
         # Verificar se há documentos carregados
         if not self.incra_path.get():
             messagebox.showwarning(
-                "Aviso",
-                "Por favor, selecione o arquivo INCRA."
+                "Aviso", 
+                "Por favor, selecione pelo menos o arquivo INCRA."
             )
             return
-
-        if not self.projeto_path.get():
+        
+        if not self.memorial_path.get() and not self.projeto_path.get():
             messagebox.showwarning(
                 "Aviso",
-                "Por favor, selecione o arquivo do Projeto."
+                "Por favor, selecione pelo menos o Memorial ou o Projeto para comparar."
             )
             return
-
+        
         # Criar e abrir janela de comparação
         try:
             janela_comparacao = JanelaComparacaoManual(
                 self.root,
                 self.incra_path.get(),
-                self.projeto_path.get()
+                self.memorial_path.get() if self.memorial_path.get() else None,
+                self.projeto_path.get() if self.projeto_path.get() else None
             )
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao abrir comparação manual:\n{str(e)}")
@@ -264,13 +275,104 @@ class VerificadorGeorreferenciamento:
     def _desabilitar_botoes(self):
         """Desabilita os botões durante o processamento."""
         self.btn_comparar.config(state='disabled')
-        self.btn_comparacao_manual.config(state='disabled')
 
     def _habilitar_botoes(self):
         """Reabilita os botões após o processamento."""
         self.btn_comparar.config(state='normal')
-        self.btn_comparacao_manual.config(state='normal')
-        
+
+    # ========== NOVAS FUNÇÕES V3: EXTRAÇÃO PARA EXCEL ==========
+
+    def _extrair_pdf_para_excel(self, pdf_path: str, tipo: str = "normal") -> tuple[str, Dict]:
+        """
+        Extrai dados de um PDF memorial para Excel usando Gemini API.
+
+        Args:
+            pdf_path: Caminho do arquivo PDF
+            tipo: "incra" para usar extração especializada INCRA, "normal" para outros
+
+        Returns:
+            Tupla (caminho_excel, dados_dict)
+        """
+        try:
+            api_key = self.api_key.get().strip()
+
+            # Criar diretório temporário para Excel se não existir
+            # Usa tempfile.gettempdir() que é multiplataforma (Windows/Linux/Mac)
+            output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
+
+            # Criar diretório com permissões adequadas
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Verificar se o diretório foi criado
+            if not output_dir.exists():
+                raise RuntimeError(f"Não foi possível criar o diretório: {output_dir}")
+
+            # Definir nome do arquivo Excel
+            pdf_name = Path(pdf_path).stem
+            excel_path = output_dir / f"{pdf_name}_extraido.xlsx"
+
+            # Extrair dados usando função apropriada
+            if tipo == "incra":
+                dados = extrair_memorial_incra(Path(pdf_path), api_key)
+            else:
+                dados = extract_table_from_pdf(pdf_path, api_key)
+
+            # Verificar se dados foram extraídos
+            if not dados or 'data' not in dados:
+                raise ValueError("Nenhum dado foi extraído do PDF")
+
+            if not dados['data']:
+                raise ValueError("PDF extraído, mas tabela de dados está vazia")
+
+            # Criar arquivo Excel
+            create_excel_file(dados, str(excel_path))
+
+            # Verificar se o arquivo foi criado
+            if not excel_path.exists():
+                raise RuntimeError(f"Arquivo Excel não foi criado em: {excel_path}\n"
+                                 f"Verifique permissões no diretório: {output_dir}")
+
+            # Verificar se o arquivo tem conteúdo
+            file_size = excel_path.stat().st_size
+            if file_size == 0:
+                raise RuntimeError(f"Arquivo Excel criado mas está vazio: {excel_path}")
+            return str(excel_path), dados
+
+        except Exception as e:
+            error_msg = f"Erro ao extrair PDF para Excel: {str(e)}"
+            print(f"❌ {error_msg}")
+            raise RuntimeError(error_msg) from e
+
+    def _ler_dados_excel(self, excel_path: str) -> Dict:
+        """
+        Lê dados estruturados de um arquivo Excel gerado pela extração.
+
+        Args:
+            excel_path: Caminho do arquivo Excel
+
+        Returns:
+            Dicionário com estrutura padronizada dos dados
+        """
+        wb = load_workbook(excel_path)
+        ws = wb.active
+
+        dados = {
+            "header_row1": ["VÉRTICE", "SEGMENTO VANTE"],
+            "header_row2": ["Código", "Longitude", "Latitude", "Altitude (m)",
+                           "Código", "Azimute", "Dist. (m)", "Confrontações"],
+            "data": []
+        }
+
+        # Ler dados a partir da linha 3 (linhas 1 e 2 são cabeçalhos)
+        for row in ws.iter_rows(min_row=3, values_only=True):
+            if row[0]:  # Se tem código no vértice
+                dados["data"].append(list(row))
+
+        wb.close()
+        return dados
+
+    # ========== FIM NOVAS FUNÇÕES V3 ==========
+
     def _carregar_pdf_como_imagens(self, pdf_path: str, rotacionar_90: bool = False) -> List[Image.Image]:
         """
         Converte um PDF em lista de imagens PIL.
@@ -298,12 +400,16 @@ class VerificadorGeorreferenciamento:
         except Exception as e:
             raise Exception(f"Erro ao processar PDF {Path(pdf_path).name}: {str(e)}")
             
-    def _construir_prompt_gemini(self) -> List:
+    def _construir_prompt_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = True) -> List:
         """
         Constrói o prompt multimodal para a API do Gemini.
-
+        
+        Args:
+            incluir_projeto: Se True, inclui as imagens do projeto na análise
+            incluir_memorial: Se True, inclui as imagens do memorial na análise
+            
         Returns:
-            Lista contendo strings de texto e objetos PIL.Image para comparação INCRA vs Projeto
+            Lista contendo strings de texto e objetos PIL.Image
         """
         prompt = [
             "Você é um assistente ESPECIALISTA em análise de documentos de georreferenciamento de imóveis rurais para cartórios no Brasil.",
@@ -338,11 +444,32 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n**FORMATO DOS DOCUMENTOS:**",
             "\n1. 📋 INCRA: Dados em TABELAS - extraia TODAS as células com precisão",
-            "\n2. 🗺️ PROJETO/PLANTA: ",
+            "\n2. 📄 MEMORIAL: Dados em TEXTO CORRIDO - ⚠️ CRÍTICO: LEIA LETRA POR LETRA!",
+            "\n   • O Memorial é um texto em PROSA (parágrafos longos)",
+            "\n   • As informações estão DISPERSAS e MISTURADAS no texto",
+            "\n   • Você DEVE ler com EXTREMA ATENÇÃO cada palavra",
+            "\n   • NÃO invente informações - copie EXATAMENTE como está escrito",
+            "\n   • Exemplo: Se está 'NCXC-P-1032', escreva EXATAMENTE 'NCXC-P-1032'",
+            "\n   • ⚠️ NÃO troque letras! NCXC ≠ NXCX ≠ NCXX ≠ NCCX",
+            "\n3. 🗺️ PROJETO/PLANTA: ",
             "\n   • Se for PDF DIGITAL (texto selecionável): TEM TABELAS! Leia-as!",
             "\n   • Se for ESCANEADO (imagem): Extraia visualmente",
             "\n   • Procure por 'Tabela de Coordenadas' ou grade com vértices",
             "\n   • NO PROJETO que você está analisando agora: HÁ UMA TABELA NO CANTO!",
+            "\n",
+            "\n**⚠️ ATENÇÃO MÁXIMA AO LER MEMORIAL DESCRITIVO:**",
+            "\nO Memorial é um TEXTO LONGO onde as informações aparecem assim:",
+            "\n'...inicia-se no vértice NCXC-P-1032, de coordenadas (Longitude: -48°40'19,003\", Latitude: -21°00'03,754\"...'",
+            "\nOU:",
+            "\n'Perímetro (m): 3.873,67 m'",
+            "\n",
+            "\nVocê DEVE:",
+            "\n✅ Ler palavra por palavra, letra por letra",
+            "\n✅ Copiar códigos EXATAMENTE: NCXC-P-1032 (não invente NXCX ou similar)",
+            "\n✅ Extrair coordenadas completas (Longitude, Latitude, Altitude se houver)",
+            "\n✅ Identificar TODOS os vértices mesmo que estejam em parágrafos diferentes",
+            "\n✅ Procurar informações em TODO o texto (começo, meio, fim)",
+            "\n✅ Buscar 'Perímetro' ou 'perímetro' no texto - NÃO diga 'não encontrado' sem procurar!",
             "\n",
             "\n**⚠️ ATENÇÃO MÁXIMA AO LER PROJETO/PLANTA:**",
             "\n",
@@ -381,6 +508,10 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n**⚠️ ATENÇÃO ESPECIAL - INFORMAÇÕES PARCIAIS:**",
             "\n- Se um documento tem TEXTO PARCIAL de outro, isso NÃO é igual!",
+            "\n- Exemplo ERRADO de considerar igual:",
+            "\n  • INCRA: 'Estrada Municipal'",
+            "\n  • Memorial: 'Estrada Municipal que liga o distrito de São José ao centro'",
+            "\n  → Isso é DIFERENTE! O Memorial tem informação ADICIONAL importante!",
             "\n- Quando encontrar casos assim, marque como <span class='status-alerta'>⚠️</span>",
             "\n- E adicione observação: 'VERIFICAR: Um documento tem informação mais completa'",
             "\n- O usuário DEVE verificar manualmente se a informação adicional é relevante",
@@ -398,7 +529,7 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n✅ **DADOS TÉCNICOS:**",
             "\n   • Área Total em hectares (todas as casas decimais)",
-            "\n   • Perímetro em metros",
+            "\n   • Perímetro em metros - BUSQUE NO TEXTO DO MEMORIAL!",
             "\n   • Sistema de coordenadas (UTM/Geográfico/SIRGAS)",
             "\n   • Datum (SIRGAS2000, SAD69, etc)",
             "\n",
@@ -411,6 +542,10 @@ class VerificadorGeorreferenciamento:
             "\n     - Latitude (ex: -21°00'03,754\") OU N=7696237 (UTM)",
             "\n     - Altitude se houver (ex: 509,05 m)",
             "\n   • CRÍTICO: Não omita vértices! Liste TODOS que encontrar!",
+            "\n   • No Memorial, os vértices aparecem assim:",
+            "\n     'vértice NCXC-P-1032, de coordenadas (Longitude: -48°40'19,003\", Latitude: -21°00'03,754\"...'",
+            "\n     ou",
+            "\n     '12,68 m até o vértice NCXC-P-1033, de coordenadas...'",
             "\n   • No Projeto, os vértices estão em TABELAS:",
             "\n     Procure por tabela com colunas: Código | Longitude | Latitude | Altitude",
             "\n     Ou: Código | E | N",
@@ -517,98 +652,6 @@ class VerificadorGeorreferenciamento:
             "\n",
             "\n⚠️ INSTRUÇÕES CRÍTICAS PARA LER A TABELA:",
             "\n",
-            "\n🚨🚨🚨 REGRA ABSOLUTA - EXTRAÇÃO COMPLETA 🚨🚨🚨",
-            "\n",
-            "\n⛔ ZERO TOLERÂNCIA PARA LINHAS FALTANDO:",
-            "\n• Você DEVE extrair 100% das linhas da tabela",
-            "\n• NÃO pule NENHUMA linha",
-            "\n• NÃO omita NENHUM vértice ou segmento",
-            "\n• MANTENHA a ordem EXATA do documento original",
-            "\n• LEIA linha por linha, da primeira até a ÚLTIMA",
-            "\n• Se a tabela tem 26 linhas, seu relatório DEVE ter 26 linhas",
-            "\n• Se a tabela tem 30 linhas, seu relatório DEVE ter 30 linhas",
-            "\n",
-            "\n📊 MÉTODO DE EXTRAÇÃO LINHA POR LINHA:",
-            "\n1. Comece na primeira linha de dados (após o cabeçalho)",
-            "\n2. Leia e extraia: linha 1, linha 2, linha 3, linha 4...",
-            "\n3. Continue SEM PULAR até a última linha",
-            "\n4. CONTE quantas linhas você extraiu",
-            "\n5. VERIFIQUE: O número de linhas extraídas = número de linhas na tabela?",
-            "\n6. Se NÃO, VOLTE e extraia as linhas que faltam!",
-            "\n",
-            "\n✅ VERIFICAÇÃO OBRIGATÓRIA:",
-            "\nApós a extração, PERGUNTE A SI MESMO:",
-            "\n• Quantas linhas de vértices tem na tabela? _____",
-            "\n• Quantas linhas de vértices eu extraí? _____",
-            "\n• Os números são IGUAIS? Se NÃO, falta algo!",
-            "\n",
-            "\n════════════════════════════════════════════════════════════",
-            "\n      🎯 ESTRATÉGIA DE EXTRAÇÃO EM DUAS ETAPAS 🎯",
-            "\n════════════════════════════════════════════════════════════",
-            "\n",
-            "\n🚨🚨🚨 IMPORTANTE: O INCRA É A FONTE DE VERDADE! 🚨🚨🚨",
-            "\n",
-            "\n📋 ETAPA 1 - EXTRAIR CÓDIGOS DO INCRA PRIMEIRO:",
-            "\n",
-            "\n1️⃣ ANTES de fazer qualquer comparação, LEIA APENAS a coluna 'Código' do INCRA",
-            "\n2️⃣ Extraia TODOS os códigos da tabela do INCRA em uma lista",
-            "\n3️⃣ Esta lista será sua FONTE DE VERDADE",
-            "\n",
-            "\n💡 POR QUÊ?",
-            "\n• O documento INCRA tem os códigos mais legíveis",
-            "\n• Os códigos do PROJETO são os MESMOS do INCRA",
-            "\n• Os códigos do SEGMENTO VANTE também são os MESMOS",
-            "\n",
-            "\n✅ EXEMPLO DE LISTA DE CÓDIGOS:",
-            "\nVÉRTICES:",
-            "\n  AKE-V-0166  ← Primeiro vértice",
-            "\n  AKE-M-1028",
-            "\n  AKE-M-1029",
-            "\n  AKE-M-1087  ← ⚠️ É 1087, NÃO 1098 ou 1069!",
-            "\n  AKE-M-1088  ← ⚠️ É 1088, NÃO 1099 ou 1089!",
-            "\n  AKE-P-3567",
-            "\n  AKE-P-3568",
-            "\n  AKE-P-3569",
-            "\n  ...",
-            "\n  AKE-P-3584",
-            "\n  AKE-P-3585",
-            "\n  AKE-P-3586  ← Último vértice (número mais alto)",
-            "\n",
-            "\n🚨🚨🚨 REGRA IMPORTANTE - SEQUÊNCIA DE CÓDIGOS 🚨🚨🚨",
-            "\n",
-            "\n⚠️ CÓDIGOS SEGUEM ORDEM CRESCENTE:",
-            "\n• Se começa com 1028, continua: 1029, 1030, 1087, 1088...",
-            "\n• Se está em 3567, continua: 3568, 3569, 3570... 3584, 3585, 3586",
-            "\n• Números SEMPRE CRESCEM, NUNCA VOLTAM!",
-            "\n• Se chegou em AKE-P-3586, o próximo NÃO pode ser AKE-V-0166",
-            "\n",
-            "\n⚠️ O PRIMEIRO VÉRTICE NÃO É O ÚLTIMO:",
-            "\n• Primeiro vértice: AKE-V-0166 (número baixo: 0166)",
-            "\n• Último vértice: AKE-P-3586 (número alto: 3586)",
-            "\n• ❌ ERRADO: ...AKE-P-3585, AKE-P-3586, AKE-V-0166 (0166 < 3586!)",
-            "\n• ✅ CORRETO: ...AKE-P-3585, AKE-P-3586 (para aqui!)",
-            "\n",
-            "\n💡 NOTA SOBRE FECHAMENTO DE POLÍGONO:",
-            "\n• Algumas tabelas mostram o primeiro vértice novamente no FINAL",
-            "\n• Isso é apenas para indicar que o polígono fecha",
-            "\n• Mas na LISTA DE CÓDIGOS, NÃO repita o primeiro!",
-            "\n• Exemplo: Se tem 26 vértices, liste 26 códigos únicos",
-            "\n",
-            "\nSEGMENTO VANTE:",
-            "\n  (mesmos códigos, na segunda parte da tabela INCRA)",
-            "\n",
-            "\n📋 ETAPA 2 - USAR CÓDIGOS DE REFERÊNCIA NO PROJETO:",
-            "\n",
-            "\n1️⃣ Quando for ler a tabela do PROJETO",
-            "\n2️⃣ Use a LISTA DE CÓDIGOS do INCRA como referência",
-            "\n3️⃣ Procure no PROJETO as coordenadas correspondentes a cada código",
-            "\n4️⃣ Os códigos são IDÊNTICOS nos dois documentos",
-            "\n",
-            "\n🔴 NÃO FAÇA OCR dos códigos do Projeto se não tiver certeza!",
-            "\n🟢 USE os códigos do INCRA como referência!",
-            "\n",
-            "\n════════════════════════════════════════════════════════════",
-            "\n",
             "\n1. LOCALIZE a tabela 'DESCRIÇÃO DA PARCELA'",
             "\n",
             "\n2. A tabela tem este formato:",
@@ -628,250 +671,32 @@ class VerificadorGeorreferenciamento:
             "\n│ AKE-M-1028  │ 140°40' │ 43,85    │ CNS: 12.102-0 | Mat...  │",
             "\n└─────────────┴─────────┴──────────┴─────────────────────────┘",
             "\n",
-            "\n3. COPIE os códigos dos vértices EXATAMENTE - CARACTERE POR CARACTERE:",
-            "\n   🚨🚨🚨 EXTREMAMENTE IMPORTANTE: NÃO INVENTE CÓDIGOS! 🚨🚨🚨",
-            "\n   • Copie o que ESTÁ ESCRITO, não o que você ACHA que deveria estar!",
+            "\n3. COPIE os códigos dos vértices EXATAMENTE:",
             "\n   • Exemplo: AKE-V-0166, AKE-M-1028, AKE-P-3567",
             "\n   • ⚠️ NÃO troque letras: AKE ≠ AME ≠ AXE ≠ AKF",
-            "\n   • ⚠️ NÃO troque números: 1028 ≠ 1008 ≠ 1128 ≠ 1030",
-            "\n   • ⚠️ Se está 1087, copie 1087 (NÃO mude para 1030!)",
-            "\n   • ⚠️ Se está 1088, copie 1088 (NÃO omita!)",
-            "\n   • ⚠️ Mantenha hífens: AKE-P-3567 (não AKE P 3567)",
-            "\n   • ⚠️⚠️⚠️ UNDERSCORES são DIFERENTES de HÍFENS:",
-            "\n       - Se está AKE_P-3568 (com underscore _), copie AKE_P-3568",
-            "\n       - Se está AKE-P-3568 (com hífen -), copie AKE-P-3568",
-            "\n       - AKE_P ≠ AKE-P (são DIFERENTES!)",
-            "\n   • OLHE COM ATENÇÃO: é hífen (-) ou underscore (_)?",
+            "\n   • ⚠️ NÃO troque números: 1028 ≠ 1008 ≠ 1128",
+            "\n   • ⚠️ Mantenha hífens e letras: AKE-P-3567 (não AKE P 3567)",
             "\n",
-            "\n4. COPIE as coordenadas COM PRECISÃO EXTREMA:",
-            "\n   ",
-            "\n   🎯 MÉTODO DE EXTRAÇÃO - LEIA DEVAGAR, CARACTERE POR CARACTERE:",
-            "\n   ",
-            "\n   📍 LONGITUDE (coluna 2):",
-            "\n   • Formato: -48°34'14,782\"",
-            "\n   • Leia: sinal (-), graus (48), símbolo (°), minutos (34), apóstrofo ('), segundos (14,782), aspas (\")",
-            "\n   • ⚠️ CUIDADO: Os segundos têm VÍRGULA e 3 casas decimais: 14,782",
-            "\n   • ⚠️ NÃO confunda: 14,782 ≠ 14,78 ≠ 14,7",
-            "\n   • ⚠️ NÃO confunda: 34 ≠ 35 ≠ 33",
-            "\n   ",
-            "\n   📍 LATITUDE (coluna 3):",
-            "\n   • Formato: -20°50'45,291\"",
-            "\n   • Leia: sinal (-), graus (20), símbolo (°), minutos (50), apóstrofo ('), segundos (45,291), aspas (\")",
-            "\n   • ⚠️ CUIDADO: Os segundos têm VÍRGULA e 3 casas decimais: 45,291",
-            "\n   • ⚠️ NÃO confunda: 45,291 ≠ 45,29 ≠ 45,2",
-            "\n   • ⚠️ NÃO confunda: 50 ≠ 51 ≠ 49",
-            "\n   ",
-            "\n   📍 ALTITUDE (coluna 4):",
-            "\n   • Formato: 532,78",
-            "\n   • Número com vírgula e 2 casas decimais",
-            "\n   • ⚠️ CUIDADO: 532,78 ≠ 532,77 ≠ 533,78",
-            "\n   ",
-            "\n   🚨🚨🚨 ATENÇÃO MÁXIMA:",
-            "\n   • Coordenadas são EXTREMAMENTE PRECISAS",
-            "\n   • Um erro de 1 segundo = ~30 metros de diferença no terreno!",
-            "\n   • LEIA DEVAGAR, confira DUAS VEZES cada número",
-            "\n   • Use ZOOM na imagem se necessário",
-            "\n   ",
-            "\n   📍 IMPORTANTE PARA COMPARAÇÃO:",
-            "\n   🚨 O INCRA tem sinal negativo (-) antes das coordenadas",
-            "\n   🚨 O PROJETO NÃO tem sinal negativo, usa W/S no final",
-            "\n   🚨 Na comparação, IGNORE o sinal negativo!",
-            "\n   ",
-            "\n   ✅ EXEMPLOS EQUIVALENTES (são a MESMA coordenada):",
-            "\n   • INCRA: -48°34'14,782\"  ≡  PROJETO: 48°34'14,782\" W",
-            "\n   • INCRA: -20°50'45,291\"  ≡  PROJETO: 20°50'45,291\" S",
-            "\n   ",
-            "\n   💡 Ao comparar:",
-            "\n   1. Ignore o sinal negativo (-) do INCRA",
-            "\n   2. Ignore a letra W/S do PROJETO",
-            "\n   3. Compare apenas os números: 48°34'14,782\" = 48°34'14,782\"",
-            "\n   4. Verifique TODAS as casas decimais: 14,782 deve ser exatamente 14,782",
+            "\n4. COPIE as coordenadas COM TODOS OS SÍMBOLOS:",
+            "\n   • Longitude: -48°34'14,782\" (sinal, °, ', \")",
+            "\n   • Latitude: -20°50'45,291\" (sinal, °, ', \")",
+            "\n   • Altitude: 532,78 (número com vírgula)",
+            "\n   • Azimute: 140°40' (graus e minutos)",
+            "\n   • Distância: 43,85 (número com vírgula)",
             "\n",
-            "\n5. REPRODUZA A TABELA COMPLETA - CONTAGEM OBRIGATÓRIA:",
-            "\n   ",
-            "\n   🚨 CRÍTICO: A tabela continua em MÚLTIPLAS PÁGINAS!",
-            "\n   • Página 1 do INCRA: Primeiros ~16-18 vértices",
-            "\n   • Página 2 do INCRA: Vértices restantes (~8-10)",
-            "\n   • TOTAL: ~26 vértices (ou mais)",
-            "\n   ",
-            "\n   📊 MÉTODO DE CONTAGEM:",
-            "\n   1. Leia a primeira linha após o cabeçalho",
-            "\n   2. CONTE: linha 1, linha 2, linha 3, linha 4...",
-            "\n   3. Continue até NÃO haver mais linhas",
-            "\n   4. Anote o total: \"Encontrei __ linhas\"",
-            "\n   5. Verifique: O último código tem número MAIOR que o primeiro?",
-            "\n   ",
-            "\n   ⚠️⚠️⚠️ ATENÇÃO COM O FECHAMENTO:",
-            "\n   • Algumas tabelas repetem o PRIMEIRO vértice no final",
-            "\n   • Isso serve para \"fechar o polígono\" visualmente",
-            "\n   • MAS você NÃO deve contar essa linha repetida!",
-            "\n   ",
-            "\n   ✅ EXEMPLO CORRETO:",
-            "\n   Linha 1: AKE-V-0166 (primeiro - número 0166)",
-            "\n   Linha 2: AKE-M-1028",
-            "\n   ...",
-            "\n   Linha 25: AKE-P-3585",
-            "\n   Linha 26: AKE-P-3586 (último - número 3586)",
-            "\n   [Linha extra: AKE-V-0166] ← NÃO CONTE ESTA! É repetição!",
-            "\n   Total de vértices únicos: 26",
-            "\n   ",
-            "\n   ❌ EXEMPLO ERRADO:",
-            "\n   Linha 25: AKE-P-3585",
-            "\n   Linha 26: AKE-P-3586",
-            "\n   Linha 27: AKE-V-0166 ← ERRO! 0166 < 3586 (voltou!)",
-            "\n   ",
-            "\n   💡 REGRA SIMPLES:",
-            "\n   • Se o código tem número MENOR que o anterior = É REPETIÇÃO",
-            "\n   • Pare de contar quando o número voltar ao início",
-            "\n   ",
-            "\n   ⚠️ NUNCA pare de ler na página 1!",
-            "\n   ⚠️ SEMPRE verifique se há mais páginas!",
-            "\n   ⚠️ Se você extraiu 25 vértices, PROCURE O 26º!",
-            "\n   ",
-            "\n   🚨🚨🚨 ATENÇÃO ESPECIAL - O ÚLTIMO CÓDIGO:",
-            "\n   ⚠️⚠️⚠️ O ÚLTIMO CÓDIGO É O MAIS IMPORTANTE! ⚠️⚠️⚠️",
-            "\n   ",
-            "\n   • Você DEVE encontrar e extrair o ÚLTIMO código da tabela",
-            "\n   • Procure na SEGUNDA PÁGINA do INCRA!",
-            "\n   • O último código tem o NÚMERO MAIS ALTO",
-            "\n   • Exemplo: Se tem AKE-P-3586, esse é o ÚLTIMO (3586 é o maior)",
-            "\n   • NÃO PODE FALTAR! Isso é CRÍTICO!",
-            "\n   ",
-            "\n   ✅ VERIFICAÇÃO DO ÚLTIMO CÓDIGO:",
-            "\n   1. Qual é o último código que extraí? _______",
-            "\n   2. Esse código tem o número mais alto da tabela? SIM/NÃO",
-            "\n   3. Verifiquei a segunda página do INCRA? SIM/NÃO",
-            "\n   4. Há alguma linha depois desse código? SIM/NÃO",
-            "\n   ",
-            "\n   🔴 Se alguma resposta não estiver certa, PROCURE NOVAMENTE!",
-            "\n",
-            "\n5.5 🚨🚨🚨 MÉTODO RIGOROSO DE OCR - LINHA POR LINHA, CÉLULA POR CÉLULA 🚨🚨🚨",
-            "\n   ",
-            "\n   ⚠️⚠️⚠️ CRÍTICO: A maioria dos erros está nos NÚMEROS! ⚠️⚠️⚠️",
-            "\n   ",
-            "\n   📋 PROCESSO OBRIGATÓRIO - SIGA EXATAMENTE:",
-            "\n   ",
-            "\n   PARA CADA LINHA DA TABELA:",
-            "\n   ",
-            "\n   PASSO 1 - EXTRAIR CÓDIGO (coluna 1):",
-            "\n   └─ Leia o código completo: AKE-X-XXXX",
-            "\n   └─ Anote mentalmente: \"Código = _______\"",
-            "\n   ",
-            "\n   PASSO 2 - EXTRAIR LONGITUDE (coluna 2):",
-            "\n   🎯 FOQUE EXCLUSIVAMENTE nesta célula!",
-            "\n   ",
-            "\n   A. Isole visualmente APENAS a célula de Longitude",
-            "\n   B. Ignore todas as outras colunas temporariamente",
-            "\n   C. Leia DEVAGAR, parte por parte:",
-            "\n      ",
-            "\n      Formato: -48°34'14,782\"",
-            "\n      └─ Sinal: - (tem ou não tem?)",
-            "\n      └─ Graus: __ (2 dígitos)",
-            "\n      └─ Símbolo: °",
-            "\n      └─ Minutos: __ (2 dígitos)",
-            "\n      └─ Apóstrofo: '",
-            "\n      └─ Segundos INTEIROS: __ (2 dígitos)",
-            "\n      └─ Vírgula: ,",
-            "\n      └─ Segundos DECIMAIS: ___ (EXATAMENTE 3 dígitos!)",
-            "\n      └─ Aspas: \"",
-            "\n   ",
-            "\n   D. Leia OS SEGUNDOS 2 VEZES para confirmar:",
-            "\n      └─ Primeira leitura: __.___",
-            "\n      └─ Segunda leitura: __.___",
-            "\n      └─ São IGUAIS? Se NÃO, leia uma TERCEIRA vez!",
-            "\n   ",
-            "\n   E. Verifique:",
-            "\n      ✓ Tem EXATAMENTE 3 dígitos após a vírgula?",
-            "\n      ✓ Exemplo: 14,782 (não 14,78!)",
-            "\n   ",
-            "\n   PASSO 3 - EXTRAIR LATITUDE (coluna 3):",
-            "\n   🎯 FOQUE EXCLUSIVAMENTE nesta célula!",
-            "\n   ",
-            "\n   A. Isole visualmente APENAS a célula de Latitude",
-            "\n   B. Ignore todas as outras colunas temporariamente",
-            "\n   C. Leia DEVAGAR, parte por parte:",
-            "\n      ",
-            "\n      Formato: -20°50'45,291\"",
-            "\n      └─ Sinal: - (tem ou não tem?)",
-            "\n      └─ Graus: __ (2 dígitos)",
-            "\n      └─ Símbolo: °",
-            "\n      └─ Minutos: __ (2 dígitos)",
-            "\n      └─ Apóstrofo: '",
-            "\n      └─ Segundos INTEIROS: __ (2 dígitos)",
-            "\n      └─ Vírgula: ,",
-            "\n      └─ Segundos DECIMAIS: ___ (EXATAMENTE 3 dígitos!)",
-            "\n      └─ Aspas: \"",
-            "\n   ",
-            "\n   D. Leia OS SEGUNDOS 2 VEZES para confirmar:",
-            "\n      └─ Primeira leitura: __.___",
-            "\n      └─ Segunda leitura: __.___",
-            "\n      └─ São IGUAIS? Se NÃO, leia uma TERCEIRA vez!",
-            "\n   ",
-            "\n   E. Verifique:",
-            "\n      ✓ Tem EXATAMENTE 3 dígitos após a vírgula?",
-            "\n      ✓ Exemplo: 45,291 (não 45,29!)",
-            "\n   ",
-            "\n   PASSO 4 - EXTRAIR ALTITUDE (coluna 4):",
-            "\n   🚨🚨🚨 ESTA É A MAIS DIFÍCIL! ATENÇÃO MÁXIMA! 🚨🚨🚨",
-            "\n   ",
-            "\n   A. Isole visualmente APENAS a célula de Altitude",
-            "\n   B. Ignore COMPLETAMENTE as outras colunas",
-            "\n   C. Leia dígito por dígito:",
-            "\n      ",
-            "\n      Formato: XXX,XX",
-            "\n      └─ Centenas: _ (é 5 ou 6? é 3 ou 8?)",
-            "\n      └─ Dezenas: _ (é 3 ou 8? é 2 ou 7?)",
-            "\n      └─ Unidades: _ (é 2 ou 7? é 4 ou 9?)",
-            "\n      └─ Vírgula: ,",
-            "\n      └─ Decimal 1: _ (é 7 ou 1?)",
-            "\n      └─ Decimal 2: _ (SEMPRE tem! não omita!)",
-            "\n   ",
-            "\n   D. Leia O NÚMERO COMPLETO 3 VEZES:",
-            "\n      └─ 1ª leitura: ___,__",
-            "\n      └─ 2ª leitura: ___,__",
-            "\n      └─ 3ª leitura: ___,__",
-            "\n      └─ As 3 são IGUAIS? Se NÃO, leia MAIS vezes!",
-            "\n   ",
-            "\n   E. Pares confusos - MUITO CUIDADO:",
-            "\n      • 5 ou 6? → Olhe o formato da curva",
-            "\n      • 3 ou 8? → 8 tem dois círculos, 3 tem um",
-            "\n      • 2 ou 7? → 7 tem traço horizontal em cima",
-            "\n      • 1 ou 7? → 1 é reto, 7 tem ângulo",
-            "\n   ",
-            "\n   F. Verificação cruzada:",
-            "\n      • Compare com altitude da linha anterior",
-            "\n      • Altitudes variam pouco: 530-540 geralmente",
-            "\n      • Se anterior era 532 e você leu 597 → ERRO!",
-            "\n   ",
-            "\n   PASSO 5 - ANOTAR A LINHA COMPLETA:",
-            "\n   └─ Código: _______",
-            "\n   └─ Longitude: -__°__'__,___\"",
-            "\n   └─ Latitude: -__°__'__,___\"",
-            "\n   └─ Altitude: ___,__",
-            "\n   ",
-            "\n   PASSO 6 - REPETIR PARA A PRÓXIMA LINHA",
-            "\n   ",
-            "\n   🔴 NÃO TENTE LER TUDO DE UMA VEZ!",
-            "\n   🟢 PROCESSE LINHA POR LINHA, CÉLULA POR CÉLULA!",
+            "\n5. REPRODUZA A TABELA COMPLETA:",
+            "\n   • ⚠️ A tabela continua em MÚLTIPLAS PÁGINAS!",
+            "\n   • Página 1: Primeiros ~16 vértices",
+            "\n   • Página 2: Vértices restantes (~10)",
+            "\n   • TOTAL: ~26 vértices",
+            "\n   • COPIE TODOS! Não pare na página 1!",
             "\n",
             "\n6. MANTENHA A FORMATAÇÃO:",
             "\n   • Use espaços/tabs para alinhar colunas",
             "\n   • Separe seções (VÉRTICE e SEGMENTO VANTE)",
             "\n   • Mantenha símbolos especiais (°, ', \")",
             "\n",
-            "\n7. SEGMENTO VANTE - EXTRAÇÃO SEPARADA:",
-            "\n   🚨 IMPORTANTE: O SEGMENTO VANTE deve ser comparado SEPARADAMENTE!",
-            "\n   • No INCRA: É a segunda parte da tabela",
-            "\n   • Colunas: Código, Azimute, Dist.(m), Confrontações",
-            "\n   • O Código do Segmento Vante geralmente é diferente do Código do Vértice",
-            "\n   • Exemplo de linha do Segmento Vante:",
-            "\n     - Código: AKE-M-1028",
-            "\n     - Azimute: 140°40'",
-            "\n     - Distância: 43,85 m",
-            "\n     - Confrontações: CNS: 12.102-0 | Mat. 28309",
-            "\n   • EXTRAIA TODOS os segmentos, não apenas alguns!",
-            "\n",
-            "\n8. CONFRONTANTES DO INCRA:",
+            "\n7. CONFRONTANTES DO INCRA:",
             "\n   • Os confrontantes estão na coluna 'Confrontações' da tabela",
             "\n   • Exemplo: 'CNS: 12.102-0 | Mat. 28309'",
             "\n   • Exemplo: 'Estrada Municipal - BBD 315'",
@@ -904,9 +729,18 @@ class VerificadorGeorreferenciamento:
         # Adicionar imagens do INCRA
         prompt.extend(self.incra_images)
         prompt.append("\n--- FIM DOCUMENTO INCRA ---")
-
-        # Adicionar imagens do Projeto
-        if self.projeto_images:
+        
+        # Adicionar imagens do Memorial se necessário
+        if incluir_memorial and self.memorial_images:
+            prompt.append("\n--- INÍCIO MEMORIAL DESCRITIVO ---")
+            prompt.append("\n⚠️ ATENÇÃO: Este documento tem TEXTO CORRIDO.")
+            prompt.append("\nLeia TODO o conteúdo com cuidado.")
+            prompt.append("\nAs informações estão espalhadas em parágrafos diferentes.")
+            prompt.extend(self.memorial_images)
+            prompt.append("\n--- FIM MEMORIAL DESCRITIVO ---")
+        
+        # Adicionar imagens do Projeto se solicitado
+        if incluir_projeto and self.projeto_images:
             prompt.append("\n--- INÍCIO PROJETO/PLANTA ---")
             prompt.append("\n🎯 ATENÇÃO ESPECIAL PARA ESTE PROJETO:")
             prompt.append("\nEste é um PDF DIGITAL (não escaneado) - ele contém TABELAS DE DADOS!")
@@ -915,53 +749,12 @@ class VerificadorGeorreferenciamento:
             prompt.append("\nProcure por uma tabela com o título:")
             prompt.append("\n'Tabela de Coordenadas - Altitudes - Azimutes - Distâncias'")
             prompt.append("\n")
-            prompt.append("\nA tabela tem DUAS partes:")
-            prompt.append("\n")
-            prompt.append("\n📍 PARTE 1 - VÉRTICE:")
+            prompt.append("\nA tabela tem as seguintes colunas:")
             prompt.append("\n┌──────────┬────────────────┬────────────────┬────────────┐")
             prompt.append("\n│ Código   │ Longitude      │ Latitude       │ Altitude   │")
             prompt.append("\n├──────────┼────────────────┼────────────────┼────────────┤")
             prompt.append("\n│ AKE-V... │ 48°34'14,782\" W│ 20°50'45,291\" S│ 532,78     │")
             prompt.append("\n└──────────┴────────────────┴────────────────┴────────────┘")
-            prompt.append("\n")
-            prompt.append("\n📐 PARTE 2 - SEGMENTO VANTE (após coluna Altitude):")
-            prompt.append("\n┌──────────┬──────────┬────────────┐")
-            prompt.append("\n│ Azimute  │ Dist.(m) │ Outros     │")
-            prompt.append("\n├──────────┼──────────┼────────────┤")
-            prompt.append("\n│ 140°40'  │ 43,85    │ ...        │")
-            prompt.append("\n└──────────┴──────────┴────────────┘")
-            prompt.append("\n")
-            prompt.append("\n🚨 IMPORTANTE: No Projeto, o SEGMENTO VANTE vem LOGO APÓS a coluna Altitude!")
-            prompt.append("\n   • Procure por colunas: Azimute, Distância (ou Dist.)")
-            prompt.append("\n   • Essas colunas vêm DEPOIS de: Código, Longitude, Latitude, Altitude")
-            prompt.append("\n   • EXTRAIA também essas informações para comparação!")
-            prompt.append("\n")
-            prompt.append("\n🚨🚨🚨 REGRA ABSOLUTA - EXTRAÇÃO COMPLETA (PROJETO) 🚨🚨🚨")
-            prompt.append("\n")
-            prompt.append("\n⛔ ZERO TOLERÂNCIA PARA LINHAS FALTANDO:")
-            prompt.append("\n• Você DEVE extrair 100% das linhas da tabela do PROJETO")
-            prompt.append("\n• NÃO pule NENHUMA linha")
-            prompt.append("\n• NÃO omita NENHUM vértice")
-            prompt.append("\n• MANTENHA a ordem EXATA do documento original")
-            prompt.append("\n• LEIA linha por linha sequencialmente")
-            prompt.append("\n• Conte: Se tem 26 vértices, extraia os 26!")
-            prompt.append("\n")
-            prompt.append("\n📊 MÉTODO DE EXTRAÇÃO SEQUENCIAL:")
-            prompt.append("\n1. Localize a tabela 'Tabela de Coordenadas...'")
-            prompt.append("\n2. Identifique a primeira linha de dados")
-            prompt.append("\n3. Extraia: Linha 1 → Linha 2 → Linha 3 → ... → Última linha")
-            prompt.append("\n4. NÃO pule linhas intermediárias")
-            prompt.append("\n5. CONTE o total de linhas extraídas")
-            prompt.append("\n6. COMPARE com o total na tabela original")
-            prompt.append("\n")
-            prompt.append("\n✅ CHECKLIST DE VERIFICAÇÃO:")
-            prompt.append("\n□ Li TODAS as linhas da tabela?")
-            prompt.append("\n□ A primeira linha está incluída?")
-            prompt.append("\n□ A última linha está incluída?")
-            prompt.append("\n□ Não pulei nenhuma linha do meio?")
-            prompt.append("\n□ A ordem está correta?")
-            prompt.append("\n")
-            prompt.append("\n════════════════════════════════════════════════════════════")
             prompt.append("\n")
             prompt.append("\n⚠️ INSTRUÇÕES CRÍTICAS DE EXTRAÇÃO:")
             prompt.append("\n")
@@ -975,38 +768,11 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • Depois: TODAS as linhas de dados")
             prompt.append("\n   • Pode ter 20, 26, 30 ou mais vértices!")
             prompt.append("\n")
-            prompt.append("\n3. 🎯 USE OS CÓDIGOS DO INCRA COMO REFERÊNCIA!")
-            prompt.append("\n   ")
-            prompt.append("\n   🚨🚨🚨 ESTRATÉGIA IMPORTANTE 🚨🚨🚨")
-            prompt.append("\n   ")
-            prompt.append("\n   ✅ Você JÁ extraiu a lista de códigos do INCRA na ETAPA 1")
-            prompt.append("\n   ✅ AGORA use essa lista para encontrar as coordenadas no PROJETO")
-            prompt.append("\n   ✅ Os códigos são IDÊNTICOS nos dois documentos!")
-            prompt.append("\n   ")
-            prompt.append("\n   📋 MÉTODO:")
-            prompt.append("\n   1. Pegue o primeiro código da sua lista do INCRA (ex: AKE-V-0166)")
-            prompt.append("\n   2. PROCURE esse código na tabela do PROJETO")
-            prompt.append("\n   3. Extraia as coordenadas (Long, Lat, Alt, Azimute, Dist)")
-            prompt.append("\n   4. Repita para o próximo código da lista")
-            prompt.append("\n   5. Continue até o último código")
-            prompt.append("\n   ")
-            prompt.append("\n   🔴 NÃO TENTE ler os códigos do Projeto se não conseguir!")
-            prompt.append("\n   🟢 USE a lista de códigos do INCRA que você já tem!")
-            prompt.append("\n   ")
-            prompt.append("\n   ⚠️ LEMBRE-SE:")
-            prompt.append("\n   • Se o INCRA tem AKE-M-1087, o PROJETO também tem AKE-M-1087")
-            prompt.append("\n   • Se o INCRA tem AKE-M-1088, o PROJETO também tem AKE-M-1088")
-            prompt.append("\n   • Os códigos são EXATAMENTE IGUAIS nos dois documentos!")
-            prompt.append("\n   ")
-            prompt.append("\n   COORDENADAS NO PROJETO:")
-            prompt.append("\n   • Longitude: 48°34'14,782\" W (SEM sinal negativo, COM letra W)")
-            prompt.append("\n   • Latitude: 20°50'45,291\" S (SEM sinal negativo, COM letra S)")
+            prompt.append("\n3. ✍️ COPIE EXATAMENTE")
+            prompt.append("\n   • Código do vértice: AKE-V-0166, AKE-M-1028, AKE-P-3567...")
+            prompt.append("\n   • Longitude: 48°34'14,782\" W (com graus, minutos, segundos E direção)")
+            prompt.append("\n   • Latitude: 20°50'45,291\" S (com graus, minutos, segundos E direção)")
             prompt.append("\n   • Altitude: 532,78 (número simples)")
-            prompt.append("\n   ")
-            prompt.append("\n   🚨 DIFERENÇA INCRA vs PROJETO:")
-            prompt.append("\n   • INCRA: -48°34'14,782\" (TEM sinal negativo -)")
-            prompt.append("\n   • PROJETO: 48°34'14,782\" W (NÃO tem sinal -, tem letra W)")
-            prompt.append("\n   • São EQUIVALENTES! Na comparação, ignore o sinal -")
             prompt.append("\n")
             prompt.append("\n4. ⚠️ NÃO CONFUNDA:")
             prompt.append("\n   • ❌ NÃO pegue números do DESENHO (ex: E=741319 N=7696237)")
@@ -1014,125 +780,10 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n   • ❌ NÃO pegue números dos CARIMBOS")
             prompt.append("\n   • ✅ SÓ pegue da TABELA DE COORDENADAS!")
             prompt.append("\n")
-            prompt.append("\n5. 📝 LISTE TODOS OS VÉRTICES")
-            prompt.append("\n   🚨 CRÍTICO: Extraia TODOS os vértices da tabela!")
+            prompt.append("\n5. 📝 LISTE TODOS")
             prompt.append("\n   • Se a tabela tem 26 vértices, liste os 26!")
-            prompt.append("\n   • Se a tabela tem 30 vértices, liste os 30!")
-            prompt.append("\n   • NÃO omita nenhum vértice")
-            prompt.append("\n   • NÃO pare em 3-4 vértices")
-            prompt.append("\n   • Leia até o FIM da tabela!")
-            prompt.append("\n   ")
-            prompt.append("\n   🚨🚨🚨 ATENÇÃO ESPECIAL - O ÚLTIMO CÓDIGO DO PROJETO:")
-            prompt.append("\n   ⚠️⚠️⚠️ O ÚLTIMO CÓDIGO É O MAIS IMPORTANTE! ⚠️⚠️⚠️")
-            prompt.append("\n   ")
-            prompt.append("\n   • Você tem a lista de códigos do INCRA")
-            prompt.append("\n   • O ÚLTIMO código dessa lista é o que você DEVE encontrar no PROJETO")
-            prompt.append("\n   • Exemplo: Se o último do INCRA é AKE-P-3586, PROCURE no PROJETO")
-            prompt.append("\n   • NÃO PODE FALTAR! Isso é CRÍTICO!")
-            prompt.append("\n   • Se não encontrou, PROCURE NOVAMENTE na tabela do PROJETO")
-            prompt.append("\n")
-            prompt.append("\n5.5 🚨🚨🚨 MÉTODO RIGOROSO DE OCR - PROJETO (LINHA POR LINHA) 🚨🚨🚨")
-            prompt.append("\n   ")
-            prompt.append("\n   ⚠️⚠️⚠️ CRÍTICO: Use o MESMO método rigoroso do INCRA! ⚠️⚠️⚠️")
-            prompt.append("\n   ")
-            prompt.append("\n   📋 PROCESSO - Para cada código da sua lista do INCRA:")
-            prompt.append("\n   ")
-            prompt.append("\n   1. Pegue o código (ex: AKE-V-0166)")
-            prompt.append("\n   2. PROCURE esse código na tabela do PROJETO")
-            prompt.append("\n   3. Quando encontrar a linha, extraia CÉLULA POR CÉLULA:")
-            prompt.append("\n   ")
-            prompt.append("\n   CÉLULA 2 - LONGITUDE:")
-            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
-            prompt.append("\n   ")
-            prompt.append("\n   Formato: 48°34'14,782\" W (SEM sinal -, TEM letra W)")
-            prompt.append("\n   ")
-            prompt.append("\n   A. Leia parte por parte:")
-            prompt.append("\n      └─ Graus: __ (2 dígitos)")
-            prompt.append("\n      └─ Símbolo: °")
-            prompt.append("\n      └─ Minutos: __ (2 dígitos)")
-            prompt.append("\n      └─ Apóstrofo: '")
-            prompt.append("\n      └─ Segundos INTEIROS: __ (2 dígitos)")
-            prompt.append("\n      └─ Vírgula: ,")
-            prompt.append("\n      └─ Segundos DECIMAIS: ___ (3 dígitos!)")
-            prompt.append("\n      └─ Aspas: \"")
-            prompt.append("\n      └─ Direção: W")
-            prompt.append("\n   ")
-            prompt.append("\n   B. Leia os segundos 2-3 VEZES para confirmar")
-            prompt.append("\n   C. Verifique: Tem 3 dígitos após vírgula?")
-            prompt.append("\n   ")
-            prompt.append("\n   D. 🔍 VALIDAÇÃO CRUZADA:")
-            prompt.append("\n      • Compare com INCRA (mesmo código)")
-            prompt.append("\n      • INCRA tinha: -48°34'14,782\"")
-            prompt.append("\n      • PROJETO deve ter: 48°34'14,782\" W")
-            prompt.append("\n      • Os NÚMEROS devem ser IDÊNTICOS!")
-            prompt.append("\n      • Se diferente → VOCÊ ERROU! Leia novamente!")
-            prompt.append("\n   ")
-            prompt.append("\n   CÉLULA 3 - LATITUDE:")
-            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
-            prompt.append("\n   ")
-            prompt.append("\n   Formato: 20°50'45,291\" S (SEM sinal -, TEM letra S)")
-            prompt.append("\n   ")
-            prompt.append("\n   A. Leia parte por parte:")
-            prompt.append("\n      └─ Graus: __ (2 dígitos)")
-            prompt.append("\n      └─ Símbolo: °")
-            prompt.append("\n      └─ Minutos: __ (2 dígitos)")
-            prompt.append("\n      └─ Apóstrofo: '")
-            prompt.append("\n      └─ Segundos INTEIROS: __ (2 dígitos)")
-            prompt.append("\n      └─ Vírgula: ,")
-            prompt.append("\n      └─ Segundos DECIMAIS: ___ (3 dígitos!)")
-            prompt.append("\n      └─ Aspas: \"")
-            prompt.append("\n      └─ Direção: S")
-            prompt.append("\n   ")
-            prompt.append("\n   B. Leia os segundos 2-3 VEZES para confirmar")
-            prompt.append("\n   C. Verifique: Tem 3 dígitos após vírgula?")
-            prompt.append("\n   ")
-            prompt.append("\n   D. 🔍 VALIDAÇÃO CRUZADA:")
-            prompt.append("\n      • Compare com INCRA (mesmo código)")
-            prompt.append("\n      • INCRA tinha: -20°50'45,291\"")
-            prompt.append("\n      • PROJETO deve ter: 20°50'45,291\" S")
-            prompt.append("\n      • Os NÚMEROS devem ser IDÊNTICOS!")
-            prompt.append("\n      • Se diferente → VOCÊ ERROU! Leia novamente!")
-            prompt.append("\n   ")
-            prompt.append("\n   CÉLULA 4 - ALTITUDE:")
-            prompt.append("\n   🚨🚨🚨 ESTA É A MAIS DIFÍCIL! ATENÇÃO MÁXIMA! 🚨🚨🚨")
-            prompt.append("\n   🎯 Isole visualmente APENAS esta célula")
-            prompt.append("\n   ")
-            prompt.append("\n   Formato: XXX,XX")
-            prompt.append("\n   ")
-            prompt.append("\n   A. Leia dígito por dígito:")
-            prompt.append("\n      └─ Centenas: _ (5 ou 6? 3 ou 8?)")
-            prompt.append("\n      └─ Dezenas: _ (3 ou 8? 2 ou 7?)")
-            prompt.append("\n      └─ Unidades: _ (2 ou 7? 4 ou 9?)")
-            prompt.append("\n      └─ Vírgula: ,")
-            prompt.append("\n      └─ Decimal 1: _")
-            prompt.append("\n      └─ Decimal 2: _ (não omita!)")
-            prompt.append("\n   ")
-            prompt.append("\n   B. Leia 3 VEZES:")
-            prompt.append("\n      └─ 1ª: ___,__")
-            prompt.append("\n      └─ 2ª: ___,__")
-            prompt.append("\n      └─ 3ª: ___,__")
-            prompt.append("\n      └─ Iguais? Se não, leia mais!")
-            prompt.append("\n   ")
-            prompt.append("\n   C. Pares confusos:")
-            prompt.append("\n      • 5 ou 6? → forma da curva")
-            prompt.append("\n      • 3 ou 8? → 8=dois círculos, 3=um")
-            prompt.append("\n      • 2 ou 7? → 7=traço em cima")
-            prompt.append("\n   ")
-            prompt.append("\n   D. 🔍🔍🔍 VALIDAÇÃO CRUZADA (CRÍTICA):")
-            prompt.append("\n      • Compare com INCRA (mesmo código)")
-            prompt.append("\n      • INCRA e PROJETO devem ter altitude IGUAL ou MUITO próxima")
-            prompt.append("\n      • Diferença máxima: ±5 metros")
-            prompt.append("\n      • Exemplo:")
-            prompt.append("\n        - INCRA: 532,78 → PROJETO deve ser ~532,78")
-            prompt.append("\n        - Se você leu 597,78 → ERRO! (diferença de 65m!)")
-            prompt.append("\n        - Se você leu 537,78 → Provavelmente ERRO!")
-            prompt.append("\n        - Releia com mais cuidado!")
-            prompt.append("\n   ")
-            prompt.append("\n   4. Repita para o próximo código da lista")
-            prompt.append("\n   ")
-            prompt.append("\n   🟢 DICA FINAL: Use INCRA para VALIDAR PROJETO!")
-            prompt.append("\n   • Mesmos códigos = mesmas coordenadas")
-            prompt.append("\n   • Se diferença grande → você errou no OCR")
+            prompt.append("\n   • Não omita nenhum vértice")
+            prompt.append("\n   • Não pare em 3-4 vértices")
             prompt.append("\n")
             prompt.append("\n💡 EXEMPLO CORRETO DE EXTRAÇÃO:")
             prompt.append("\nVértice AKE-V-0166:")
@@ -1152,114 +803,96 @@ class VerificadorGeorreferenciamento:
             prompt.append("\n")
             prompt.extend(self.projeto_images)
             prompt.append("\n--- FIM PROJETO/PLANTA ---")
-
-        # INSTRUÇÕES FINAIS CRÍTICAS ANTES DO HTML
-        prompt.append("\n")
-        prompt.append("\n════════════════════════════════════════════════════════════")
-        prompt.append("\n           🚨 LEMBRETE FINAL - ANTES DE GERAR O HTML 🚨")
-        prompt.append("\n════════════════════════════════════════════════════════════")
-        prompt.append("\n")
-        prompt.append("\n⚠️ ANTES de gerar o relatório HTML, VERIFIQUE:")
-        prompt.append("\n")
-        prompt.append("\n1. ✅ Extraí TODAS as linhas da tabela INCRA?")
-        prompt.append("\n   • Contei quantas linhas tem na tabela original?")
-        prompt.append("\n   • Contei quantas linhas extraí?")
-        prompt.append("\n   • Os números são IGUAIS?")
-        prompt.append("\n")
-        prompt.append("\n2. ✅ Extraí TODAS as linhas da tabela PROJETO?")
-        prompt.append("\n   • Contei quantas linhas tem na tabela original?")
-        prompt.append("\n   • Contei quantas linhas extraí?")
-        prompt.append("\n   • Os números são IGUAIS?")
-        prompt.append("\n")
-        prompt.append("\n3. ✅ Mantive a ORDEM EXATA dos documentos originais?")
-        prompt.append("\n   • Primeira linha → vem primeiro no relatório")
-        prompt.append("\n   • Segunda linha → vem em segundo no relatório")
-        prompt.append("\n   • Última linha → vem por último no relatório")
-        prompt.append("\n")
-        prompt.append("\n4. ✅ NÃO pulei nenhuma linha do meio?")
-        prompt.append("\n   • Se tem vértices V-01, V-02, V-03... V-26")
-        prompt.append("\n   • Meu relatório tem TODOS eles, em sequência?")
-        prompt.append("\n")
-        prompt.append("\n4.5 ✅ NÃO repeti o primeiro vértice como último?")
-        prompt.append("\n   🚨 VERIFICAÇÃO CRÍTICA DOS CÓDIGOS:")
-        prompt.append("\n   • Primeiro código: número baixo (ex: AKE-V-0166 = 0166)")
-        prompt.append("\n   • Último código: número alto (ex: AKE-P-3586 = 3586)")
-        prompt.append("\n   • ⚠️ Se vejo AKE-V-0166 no final, é REPETIÇÃO (não conte!)")
-        prompt.append("\n   • ⚠️ Se o último número é MENOR que o primeiro = ERRO!")
-        prompt.append("\n   • ✅ Números devem ser CRESCENTES: 0166 < 1028 < 3586")
-        prompt.append("\n   • ❌ ERRADO: ...AKE-P-3586, AKE-V-0166 (voltou para 0166!)")
-        prompt.append("\n   • ✅ CORRETO: ...AKE-P-3585, AKE-P-3586 (terminou em 3586)")
-        prompt.append("\n")
-        prompt.append("\n5. ✅ Extraí TODOS os SEGMENTOS VANTE?")
-        prompt.append("\n   🚨🚨🚨 OBRIGATÓRIO: A seção SEGMENTO VANTE deve estar preenchida!")
-        prompt.append("\n   • Tanto do INCRA quanto do PROJETO")
-        prompt.append("\n   • NO INCRA: Está na segunda parte da tabela (Código, Azimute, Dist., Confrontações)")
-        prompt.append("\n   • NO PROJETO: Está após as colunas de coordenadas (colunas Azimute e Distância)")
-        prompt.append("\n   • Se não encontrei dados de SEGMENTO VANTE, PROCURE NOVAMENTE!")
-        prompt.append("\n   • O relatório HTML DEVE ter a SEÇÃO 4: SEGMENTO VANTE preenchida!")
-        prompt.append("\n")
-        prompt.append("\n6. ✅ Copiei os CÓDIGOS EXATAMENTE como aparecem?")
-        prompt.append("\n   🚨 CRÍTICO: Códigos devem ser copiados CARACTERE POR CARACTERE!")
-        prompt.append("\n   • Se está escrito AKE-M-1087, copie AKE-M-1087 (NÃO invente 1030!)")
-        prompt.append("\n   • Se está escrito AKE_P-3568 (com underscore), copie AKE_P-3568")
-        prompt.append("\n   • Se está escrito AKE-P-3568 (com hífen), copie AKE-P-3568")
-        prompt.append("\n   • UNDERSCORES (_) são DIFERENTES de HÍFENS (-)")
-        prompt.append("\n   • Números devem ser EXATOS: 1087 ≠ 1030 ≠ 1088")
-        prompt.append("\n   • NÃO normalize, NÃO corrija, COPIE EXATAMENTE!")
-        prompt.append("\n")
-        prompt.append("\n🔴 SE ALGUMA RESPOSTA FOR \"NÃO\": VOLTE E EXTRAIA NOVAMENTE!")
-        prompt.append("\n🟢 SE TODAS AS RESPOSTAS FOREM \"SIM\": Prossiga com o HTML!")
-        prompt.append("\n")
-        prompt.append("\n════════════════════════════════════════════════════════════")
-        prompt.append("\n")
-        prompt.append("\n🚨🚨🚨 REGRA ABSOLUTA DE RESPOSTA 🚨🚨🚨")
-        prompt.append("\n")
-        prompt.append("\n⛔ SUA RESPOSTA DEVE COMEÇAR DIRETAMENTE COM: <!DOCTYPE html>")
-        prompt.append("\n")
-        prompt.append("\n❌ NÃO ESCREVA:")
-        prompt.append("\n   • \"OK. Entendido! Vou analisar...\"")
-        prompt.append("\n   • \"ANÁLISE DOS DOCUMENTOS:\"")
-        prompt.append("\n   • \"DADOS CADASTRAIS:\"")
-        prompt.append("\n   • \"TABELA DE COORDENADAS:\"")
-        prompt.append("\n   • Qualquer texto explicativo ou rascunho")
-        prompt.append("\n")
-        prompt.append("\n✅ ESCREVA APENAS:")
-        prompt.append("\n   • Primeira linha: <!DOCTYPE html>")
-        prompt.append("\n   • Depois: <html>")
-        prompt.append("\n   • Depois: todo o HTML do relatório")
-        prompt.append("\n   • Última linha: </html>")
-        prompt.append("\n")
-        prompt.append("\n🔴 NADA ANTES DO <!DOCTYPE html>")
-        prompt.append("\n🔴 NADA DEPOIS DO </html>")
-        prompt.append("\n🔴 SEM RASCUNHOS, SEM ANÁLISES PRÉVIAS")
-        prompt.append("\n🟢 SOMENTE O CÓDIGO HTML PURO!")
-        prompt.append("\n")
-        prompt.append("\n════════════════════════════════════════════════════════════")
-        prompt.append("\n")
-
+            
         # Instruções de formato de saída - HTML PROFISSIONAL COM CORES
-
+        
+        # Determinar quais documentos foram fornecidos
+        docs_fornecidos = []
+        if self.incra_images:
+            docs_fornecidos.append("INCRA")
+        if incluir_memorial and self.memorial_images:
+            docs_fornecidos.append("MEMORIAL")
+        if incluir_projeto and self.projeto_images:
+            docs_fornecidos.append("PROJETO")
+        
+        docs_texto = " + ".join(docs_fornecidos)
+        
         instrucoes_saida = (
             "\n\n"
             "\n════════════════════════════════════════════════════════════════════"
             "\n                    FORMATO DO RELATÓRIO HTML                       "
             "\n════════════════════════════════════════════════════════════════════"
             "\n"
-            "\n🎯 DOCUMENTOS SENDO COMPARADOS: INCRA + PROJETO"
+            f"\n🎯 DOCUMENTOS SENDO COMPARADOS: {docs_texto}"
             "\n"
             "\n⚠️⚠️⚠️ REGRA CRÍTICA DE FORMATAÇÃO:"
             "\n"
-            "\n1️⃣ Você está comparando: INCRA + PROJETO"
-            "\n   • Tabela deve ter 3 colunas: DADO | INCRA | PROJETO | STATUS"
+            "\n1️⃣ SOMENTE inclua no relatório os documentos que foram fornecidos!"
             "\n"
-            "\n2️⃣ Estrutura da tabela:"
-            "\n   <thead><tr>"
-            "\n       <th>DADO</th>"
-            "\n       <th>INCRA</th>"
-            "\n       <th>PROJETO</th>"
-            "\n       <th>STATUS</th>"
-            "\n   </tr></thead>"
         )
+        
+        # Adicionar instruções específicas baseadas nos documentos
+        if incluir_memorial and not incluir_projeto:
+            instrucoes_saida += (
+                "\n   Você está comparando: INCRA + MEMORIAL"
+                "\n   • Tabela deve ter 3 colunas: DADO | INCRA | MEMORIAL | STATUS"
+                "\n   • NÃO mencione 'Projeto' ou 'Planta' em lugar nenhum"
+                "\n   • NÃO crie coluna 'PROJETO'"
+                "\n"
+            )
+        elif incluir_projeto and not incluir_memorial:
+            instrucoes_saida += (
+                "\n   Você está comparando: INCRA + PROJETO"
+                "\n   • Tabela deve ter 3 colunas: DADO | INCRA | PROJETO | STATUS"
+                "\n   • NÃO mencione 'Memorial' ou 'Memorial Descritivo' em lugar nenhum"
+                "\n   • NÃO crie coluna 'MEMORIAL'"
+                "\n"
+            )
+        else:  # Todos os 3
+            instrucoes_saida += (
+                "\n   Você está comparando: INCRA + MEMORIAL + PROJETO"
+                "\n   • Tabela deve ter 4 colunas: DADO | INCRA | MEMORIAL | PROJETO | STATUS"
+                "\n"
+            )
+        
+        instrucoes_saida += (
+            "\n2️⃣ Para documentos NÃO fornecidos:"
+            "\n   • NÃO crie coluna para eles"
+            "\n   • NÃO escreva 'N/A' ou 'Não fornecido'"
+            "\n   • SIMPLESMENTE omita essa coluna"
+            "\n"
+            "\n3️⃣ Estrutura da tabela:"
+        )
+        
+        # Cabeçalho da tabela baseado nos documentos
+        if incluir_memorial and not incluir_projeto:
+            instrucoes_saida += (
+                "\n   <thead><tr>"
+                "\n       <th>DADO</th>"
+                "\n       <th>INCRA</th>"
+                "\n       <th>MEMORIAL</th>"
+                "\n       <th>STATUS</th>"
+                "\n   </tr></thead>"
+            )
+        elif incluir_projeto and not incluir_memorial:
+            instrucoes_saida += (
+                "\n   <thead><tr>"
+                "\n       <th>DADO</th>"
+                "\n       <th>INCRA</th>"
+                "\n       <th>PROJETO</th>"
+                "\n       <th>STATUS</th>"
+                "\n   </tr></thead>"
+            )
+        else:
+            instrucoes_saida += (
+                "\n   <thead><tr>"
+                "\n       <th>DADO</th>"
+                "\n       <th>INCRA</th>"
+                "\n       <th>MEMORIAL</th>"
+                "\n       <th>PROJETO</th>"
+                "\n       <th>STATUS</th>"
+                "\n   </tr></thead>"
+            )
         
         instrucoes_saida += (
             "\n"
@@ -1309,6 +942,14 @@ class VerificadorGeorreferenciamento:
             "\n</head>"
             "\n<body>"
             "\n<div class='container'>"
+            "\n"
+            "\n<h1>📊 RELATÓRIO DE CONSISTÊNCIA - GEORREFERENCIAMENTO</h1>"
+            "\n"
+            "\n<!-- RESUMO EXECUTIVO -->"
+            "\n<h2>🎯 RESUMO EXECUTIVO</h2>"
+            "\n<div class='resumo'> <!-- Use classe 'alerta' ou 'erro' se houver problemas -->"
+            "\n[Em 2-3 frases diretas: os documentos estão consistentes ou há erros?]"
+            "\n</div>"
             "\n"
             "\n<!-- SEÇÃO 1: DADOS CADASTRAIS -->"
             "\n<h2>📋 1. DADOS CADASTRAIS</h2>"
@@ -1406,6 +1047,17 @@ class VerificadorGeorreferenciamento:
             "\n"
             "\n<!-- SEÇÃO 3: VÉRTICES -->"
             "\n<h2>🗺️ 3. COORDENADAS DOS VÉRTICES</h2>"
+            "\n<p><strong>⚠️ CRÍTICO: Liste TODOS os vértices encontrados!</strong></p>"
+            "\n<p><strong>⚠️ COPIE os códigos EXATAMENTE como aparecem no documento!</strong></p>"
+            "\n<p style='background:#fff3e0; padding:10px; border-left:3px solid #ff9800;'>"
+            "\n<strong>Exemplo de extração do Memorial:</strong><br>"
+            "\nSe o texto diz: 'vértice NCXC-P-1032, de coordenadas (Longitude: -48°40'19,003\", Latitude: -21°00'03,754\" e Altitude: 509,05 m)'<br>"
+            "\nVocê deve extrair:<br>"
+            "\n• Código: <strong>NCXC-P-1032</strong> (exatamente assim!)<br>"
+            "\n• Longitude: -48°40'19,003\"<br>"
+            "\n• Latitude: -21°00'03,754\"<br>"
+            "\n• Altitude: 509,05 m"
+            "\n</p>"
             "\n<table class='secao-vertices'>"
             "\n<thead>"
             "\n    <tr>"
@@ -1418,9 +1070,10 @@ class VerificadorGeorreferenciamento:
             "\n</thead>"
             "\n<tbody>"
             "\n    <tr>"
-            "\n        <td><strong>V1 (AKE-V-XXXX)</strong></td>"
-            "\n        <td>Long: -XX°XX'XX,XXX\"<br>Lat: -XX°XX'XX,XXX\"<br>Alt: XXX,XX</td>"
-            "\n        <td>Long: XX°XX'XX,XXX\" W<br>Lat: XX°XX'XX,XXX\" S<br>Alt: XXX,XX</td>"
+            "\n        <td><strong>V1</strong></td>"
+            "\n        <td>[E=XXX N=YYY]</td>"
+            "\n        <td>[E=XXX N=YYY]</td>"
+            "\n        <td>[E=XXX N=YYY/N/A]</td>"
             "\n        <td style='text-align:center;'><span class='status-ok'>✅</span></td>"
             "\n    </tr>"
             "\n    <!-- ADICIONE UMA LINHA PARA CADA VÉRTICE (V2, V3, V4... até o último!) -->"
@@ -1429,29 +1082,170 @@ class VerificadorGeorreferenciamento:
             "\n</table>"
             "\n<p class='analise'><strong>Análise:</strong> [Comentário sobre consistência das coordenadas]</p>"
             "\n"
-            "\n<!-- SEÇÃO 4: SEGMENTO VANTE -->"
-            "\n<h2>📐 4. SEGMENTO VANTE</h2>"
-            "\n<table class='secao-vertices'>"
+            "\n<!-- SEÇÃO 4: CONFRONTANTES -->"
+            "\n<h2>🧭 4. CONFRONTANTES/LIMITES</h2>"
+            "\n"
+            "\n⚠️ INSTRUÇÕES ESPECIAIS PARA CONFRONTANTES:"
+            "\n"
+            "\n📋 INCRA:"
+            "\n   • Os confrontantes do INCRA estão na coluna 'Confrontações' da tabela"
+            "\n   • Exemplos:"
+            "\n     - 'CNS: 12.102-0 | Mat. 28309'"
+            "\n     - 'Estrada Municipal - BBD 315'"
+            "\n     - 'CNS: 12.102-0 | Mat. 34685 | Córrego Lambari'"
+            "\n   • ⚠️ NÃO extraia nomes de pessoas!"
+            "\n   • ✅ Extraia: Matrículas, estradas, córregos, limites"
+            "\n   • Liste os confrontantes únicos (sem repetir)"
+            "\n"
+            "\n📄 MEMORIAL:"
+            "\n   • Procure por 'confrontando com' ou 'divisa com'"
+            "\n   • Pode estar no texto corrido"
+            "\n"
+            "\n🗺️ PROJETO:"
+            "\n   • Pode estar em legendas ou carimbos"
+            "\n   • Ou em texto descritivo"
+            "\n"
+            "\n<table class='secao-confrontantes'>"
             "\n<thead>"
             "\n    <tr>"
-            "\n        <th>SEGMENTO</th>"
-            "\n        <th>INCRA (Azimute/Dist./Confrontações)</th>"
-            "\n        <th>PROJETO (Azimute/Dist.)</th>"
+            "\n        <th>DIREÇÃO</th>"
+            "\n        [COLUNAS DOS DOCUMENTOS FORNECIDOS]"
             "\n        <th style='text-align:center;'>STATUS</th>"
             "\n    </tr>"
             "\n</thead>"
             "\n<tbody>"
-            "\n    <tr>"
-            "\n        <td><strong>S1</strong></td>"
-            "\n        <td>[Az=XXX° Dist=YY.YYm Conf=...]</td>"
-            "\n        <td>[Az=XXX° Dist=YY.YYm]</td>"
-            "\n        <td style='text-align:center;'><span class='status-ok'>✅</span></td>"
-            "\n    </tr>"
-            "\n    <!-- ADICIONE UMA LINHA PARA CADA SEGMENTO VANTE (S2, S3, S4... até o último!) -->"
-            "\n    <!-- NÃO OMITA NENHUM SEGMENTO! -->"
+            "\n    <!-- Liste os confrontantes encontrados -->"
+            "\n    <!-- Pode não ter direção específica, liste todos encontrados -->"
             "\n</tbody>"
             "\n</table>"
-            "\n<p class='analise'><strong>Análise:</strong> [Comentário sobre consistência dos segmentos vante]</p>"
+            "\n<p class='analise'><strong>Análise:</strong> [Comentário sobre consistência dos confrontantes]</p>"
+            "\n"
+            "\n<!-- SEÇÃO 5: DISCREPÂNCIAS CRÍTICAS -->"
+            "\n<h2>🚨 5. DISCREPÂNCIAS CRÍTICAS</h2>"
+            "\n<div class='secao-erros'>"
+            "\n[Se NÃO houver erros graves, escreva:]"
+            "\n<p><strong>✅ Nenhuma discrepância crítica identificada.</strong></p>"
+            "\n"
+            "\n[Se HOUVER erros graves, use esta tabela:]"
+            "\n<table>"
+            "\n<thead>"
+            "\n    <tr style='background:#f44336;'>"
+            "\n        <th>TIPO</th><th>CAMPO</th><th>INCRA</th><th>MEMORIAL</th><th>PROJETO</th><th>AÇÃO NECESSÁRIA</th>"
+            "\n    </tr>"
+            "\n</thead>"
+            "\n<tbody>"
+            "\n    <tr>"
+            "\n        <td><span class='status-erro'>❌</span></td>"
+            "\n        <td>[campo]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[o que corrigir]</td>"
+            "\n    </tr>"
+            "\n</tbody>"
+            "\n</table>"
+            "\n</div>"
+            "\n"
+            "\n<!-- SEÇÃO 6: PEQUENAS DIVERGÊNCIAS -->"
+            "\n<h2>⚠️ 6. PEQUENAS DIVERGÊNCIAS</h2>"
+            "\n<div class='secao-alertas'>"
+            "\n[Se NÃO houver diferenças pequenas, escreva:]"
+            "\n<p><strong>✅ Nenhuma divergência menor identificada.</strong></p>"
+            "\n"
+            "\n[Se HOUVER pequenas diferenças, use esta tabela:]"
+            "\n<table>"
+            "\n<thead>"
+            "\n    <tr style='background:#ff9800;'>"
+            "\n        <th>TIPO</th><th>CAMPO</th><th>INCRA</th><th>MEMORIAL</th><th>PROJETO</th><th>OBSERVAÇÃO</th>"
+            "\n    </tr>"
+            "\n</thead>"
+            "\n<tbody>"
+            "\n    <tr>"
+            "\n        <td><span class='status-alerta'>⚠️</span></td>"
+            "\n        <td>[campo]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>[explicação]</td>"
+            "\n    </tr>"
+            "\n</tbody>"
+            "\n</table>"
+            "\n</div>"
+            "\n"
+            "\n<!-- SEÇÃO 7: CONSISTÊNCIAS -->"
+            "\n<h2>✅ 7. CONSISTÊNCIAS CONFIRMADAS</h2>"
+            "\n<div class='secao-ok'>"
+            "\n<table>"
+            "\n<thead>"
+            "\n    <tr style='background:#4caf50;'>"
+            "\n        <th>CAMPO</th><th>VALOR CONSISTENTE</th><th>OBSERVAÇÃO</th>"
+            "\n    </tr>"
+            "\n</thead>"
+            "\n<tbody>"
+            "\n    <tr>"
+            "\n        <td>[campo]</td>"
+            "\n        <td>[valor]</td>"
+            "\n        <td>Todos os documentos conferem</td>"
+            "\n    </tr>"
+            "\n</tbody>"
+            "\n</table>"
+            "\n</div>"
+            "\n"
+            "\n<!-- SEÇÃO 8: QUALIDADE -->"
+            "\n<h2>📝 8. QUALIDADE DOS DOCUMENTOS</h2>"
+            "\n<table>"
+            "\n<thead>"
+            "\n    <tr>"
+            "\n        <th>DOCUMENTO</th><th>QUALIDADE</th><th>LEGIBILIDADE</th><th>OBSERVAÇÕES</th>"
+            "\n    </tr>"
+            "\n</thead>"
+            "\n<tbody>"
+            "\n    <tr>"
+            "\n        <td><strong>INCRA</strong></td>"
+            "\n        <td>[Excelente/Boa/Ruim]</td>"
+            "\n        <td>[100%/80%/50%]</td>"
+            "\n        <td>[comentário]</td>"
+            "\n    </tr>"
+            "\n    <tr>"
+            "\n        <td><strong>MEMORIAL</strong></td>"
+            "\n        <td>[Excelente/Boa/Ruim]</td>"
+            "\n        <td>[100%/80%/50%]</td>"
+            "\n        <td>[comentário]</td>"
+            "\n    </tr>"
+            "\n    <tr>"
+            "\n        <td><strong>PROJETO</strong></td>"
+            "\n        <td>[Excelente/Boa/Ruim/N/A]</td>"
+            "\n        <td>[100%/80%/50%/N/A]</td>"
+            "\n        <td>[comentário]</td>"
+            "\n    </tr>"
+            "\n</tbody>"
+            "\n</table>"
+            "\n"
+            "\n<!-- SEÇÃO 9: PARECER FINAL -->"
+            "\n<h2>⚖️ 9. PARECER FINAL</h2>"
+            "\n"
+            "\n[Escolha UMA das divs abaixo conforme o resultado:]"
+            "\n"
+            "\n<div class='parecer parecer-aprovado'>"
+            "\n    <p>✅ <strong>APROVADO PARA REGISTRO</strong></p>"
+            "\n    <p><strong>Justificativa:</strong> Todos os dados principais estão consistentes entre os documentos.</p>"
+            "\n</div>"
+            "\n"
+            "\n<!-- OU -->"
+            "\n"
+            "\n<div class='parecer parecer-ressalvas'>"
+            "\n    <p>⚠️ <strong>APROVADO COM RESSALVAS</strong></p>"
+            "\n    <p><strong>Justificativa:</strong> Há pequenas divergências que não impedem o registro.</p>"
+            "\n    <p><strong>Ressalvas:</strong> [listar]</p>"
+            "\n</div>"
+            "\n"
+            "\n<!-- OU -->"
+            "\n"
+            "\n<div class='parecer parecer-reprovado'>"
+            "\n    <p>❌ <strong>REPROVADO - CORREÇÕES OBRIGATÓRIAS</strong></p>"
+            "\n    <p><strong>Justificativa:</strong> Discrepâncias críticas impedem o registro.</p>"
+            "\n    <p><strong>Correções necessárias:</strong> [listar]</p>"
+            "\n</div>"
             "\n"
             "\n<!-- LEGENDA -->"
             "\n<div class='legenda'>"
@@ -1459,6 +1253,7 @@ class VerificadorGeorreferenciamento:
             "\n    <p><span class='status-ok'>✅</span> = Dados idênticos e corretos</p>"
             "\n    <p><span class='status-alerta'>⚠️</span> = Pequena diferença (revisar, mas não bloqueia)</p>"
             "\n    <p><span class='status-erro'>❌</span> = Erro grave (correção obrigatória)</p>"
+            "\n    <p><strong>N/A</strong> = Não encontrado/não aplicável</p>"
             "\n</div>"
             "\n"
             "\n<hr>"
@@ -1473,139 +1268,754 @@ class VerificadorGeorreferenciamento:
             "\n- Use <span class='status-ok'>✅</span> para dados corretos"
             "\n- Use <span class='status-alerta'>⚠️</span> para pequenas diferenças"
             "\n- Use <span class='status-erro'>❌</span> para erros graves"
+            "\n- Escolha APENAS UMA classe de parecer (aprovado/ressalvas/reprovado)"
             "\n- Liste TODOS os vértices encontrados na tabela de coordenadas"
-            "\n- Liste TODOS os segmentos vante encontrados"
-            "\n- Compare INCRA x PROJETO em todas as seções"
+            "\n- Adapte as classes 'resumo' no início conforme o resultado geral"
         )
-
+        
         prompt.append(instrucoes_saida)
         return prompt
-    def _extrair_html_puro(self, texto: str) -> str:
+        instrucoes_saida = (
+            "\n\n"
+            "\n════════════════════════════════════════════════════════════════════"
+            "\n                    FORMATO DO RELATÓRIO                            "
+            "\n════════════════════════════════════════════════════════════════════"
+            "\n"
+            "\nGere um relatório EXTREMAMENTE ORGANIZADO usando APENAS TABELAS."
+            "\nCada tipo de dado deve ter sua própria tabela."
+            "\nUse linguagem SIMPLES e DIRETA."
+            "\n"
+            "\n"
+            "\n# 📊 RELATÓRIO DE CONSISTÊNCIA - GEORREFERENCIAMENTO"
+            "\n"
+            "\n## 🎯 RESUMO EXECUTIVO"
+            "\n"
+            "\n[Em 2-3 frases diretas: os documentos estão consistentes ou há erros?]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 📋 1. DADOS CADASTRAIS"
+            "\n"
+            "\n| DADO | INCRA | MEMORIAL | PROJETO | STATUS |"
+            "\n|:-----|:------|:---------|:--------|:------:|"
+            "\n| **Proprietário(s)** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **Nome do Imóvel** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **Matrícula(s)** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **Município** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **UF** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **Código INCRA** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n| **CCIR** | [extrair] | [extrair] | [extrair/N/A] | ✅/⚠️/❌ |"
+            "\n"
+            "\n**Análise:** [Breve comentário sobre consistência destes dados]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 📐 2. DADOS TÉCNICOS/MENSURAÇÕES"
+            "\n"
+            "\n| DADO | INCRA | MEMORIAL | PROJETO | STATUS |"
+            "\n|:-----|:------|:---------|:--------|:------:|"
+            "\n| **Área Total (ha)** | [X,XXXX] | [X,XXXX] | [X,XXXX/N/A] | ✅/⚠️/❌ |"
+            "\n| **Perímetro (m)** | [X.XXX,XX] | [X.XXX,XX] | [X.XXX,XX/N/A] | ✅/⚠️/❌ |"
+            "\n| **Sistema Coordenadas** | [UTM/GEO/etc] | [UTM/GEO/etc] | [UTM/GEO/N/A] | ✅/⚠️/❌ |"
+            "\n| **Datum** | [SIRGAS/etc] | [SIRGAS/etc] | [SIRGAS/N/A] | ✅/⚠️/❌ |"
+            "\n| **Fuso** | [22/23/etc] | [22/23/etc] | [22/23/N/A] | ✅/⚠️/❌ |"
+            "\n"
+            "\n**Análise:** [Breve comentário sobre consistência destes dados]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 🗺️ 3. COORDENADAS DOS VÉRTICES"
+            "\n"
+            "\n**⚠️ CRÍTICO: Liste TODOS os vértices encontrados!**"
+            "\n"
+            "\n| VÉRTICE | INCRA (Coord) | MEMORIAL (Coord) | PROJETO (Coord) | STATUS |"
+            "\n|:--------|:--------------|:-----------------|:----------------|:------:|"
+            "\n| **V1** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **V2** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **V3** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **V4** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **V5** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **V6** | [E=XXX N=YYY] | [E=XXX N=YYY] | [E=XXX N=YYY/N/A] | ✅/⚠️/❌ |"
+            "\n| **...** | [...] | [...] | [...] | ... |"
+            "\n"
+            "\n**⚠️ SE HOUVER MAIS VÉRTICES (V7, V8, V9...), ADICIONE MAIS LINHAS!**"
+            "\n"
+            "\n**Análise:** [Comentário sobre consistência das coordenadas]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 🧭 4. CONFRONTANTES/LIMITES"
+            "\n"
+            "\n| DIREÇÃO | INCRA | MEMORIAL | PROJETO | STATUS |"
+            "\n|:--------|:------|:---------|:--------|:------:|"
+            "\n| **Norte** | [quem/o quê] | [quem/o quê] | [quem/o quê/N/A] | ✅/⚠️/❌ |"
+            "\n| **Sul** | [quem/o quê] | [quem/o quê] | [quem/o quê/N/A] | ✅/⚠️/❌ |"
+            "\n| **Leste** | [quem/o quê] | [quem/o quê] | [quem/o quê/N/A] | ✅/⚠️/❌ |"
+            "\n| **Oeste** | [quem/o quê] | [quem/o quê] | [quem/o quê/N/A] | ✅/⚠️/❌ |"
+            "\n"
+            "\n**Análise:** [Comentário sobre consistência dos confrontantes]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 🚨 5. DISCREPÂNCIAS CRÍTICAS"
+            "\n"
+            "\n[Se NÃO houver erros graves, escreva:]"
+            "\n✅ **Nenhuma discrepância crítica identificada.**"
+            "\n"
+            "\n[Se HOUVER erros graves, use esta tabela:]"
+            "\n"
+            "\n| TIPO | CAMPO | INCRA | MEMORIAL | PROJETO | AÇÃO NECESSÁRIA |"
+            "\n|:-----|:------|:------|:---------|:--------|:----------------|"
+            "\n| ❌ | [campo] | [valor] | [valor] | [valor] | [o que corrigir] |"
+            "\n| ❌ | [campo] | [valor] | [valor] | [valor] | [o que corrigir] |"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## ⚠️ 6. PEQUENAS DIVERGÊNCIAS (Revisar)"
+            "\n"
+            "\n[Se NÃO houver diferenças pequenas, escreva:]"
+            "\n✅ **Nenhuma divergência menor identificada.**"
+            "\n"
+            "\n[Se HOUVER pequenas diferenças, use esta tabela:]"
+            "\n"
+            "\n| TIPO | CAMPO | INCRA | MEMORIAL | PROJETO | OBSERVAÇÃO |"
+            "\n|:-----|:------|:------|:---------|:--------|:-----------|"
+            "\n| ⚠️ | [campo] | [valor] | [valor] | [valor] | [explicação] |"
+            "\n| ⚠️ | [campo] | [valor] | [valor] | [valor] | [explicação] |"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## ✅ 7. CONSISTÊNCIAS CONFIRMADAS"
+            "\n"
+            "\n| CAMPO | VALOR CONSISTENTE | OBSERVAÇÃO |"
+            "\n|:------|:------------------|:-----------|"
+            "\n| [campo] | [valor] | Todos os documentos conferem |"
+            "\n| [campo] | [valor] | Todos os documentos conferem |"
+            "\n| [campo] | [valor] | Todos os documentos conferem |"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## 📝 8. QUALIDADE DOS DOCUMENTOS"
+            "\n"
+            "\n| DOCUMENTO | QUALIDADE | LEGIBILIDADE | OBSERVAÇÕES |"
+            "\n|:----------|:----------|:-------------|:------------|"
+            "\n| **INCRA** | [Excelente/Boa/Ruim] | [100%/80%/50%] | [comentário] |"
+            "\n| **MEMORIAL** | [Excelente/Boa/Ruim] | [100%/80%/50%] | [comentário] |"
+            "\n| **PROJETO** | [Excelente/Boa/Ruim/N/A] | [100%/80%/50%/N/A] | [comentário] |"
+            "\n"
+            "\n---"
+            "\n"
+            "\n## ⚖️ 9. PARECER FINAL"
+            "\n"
+            "\n[Escolha UMA opção e justifique:]"
+            "\n"
+            "\n### ✅ APROVADO PARA REGISTRO"
+            "\n**Justificativa:** Todos os dados principais estão consistentes entre os documentos."
+            "\n"
+            "\nOU"
+            "\n"
+            "\n### ⚠️ APROVADO COM RESSALVAS"
+            "\n**Justificativa:** Há pequenas divergências que não impedem o registro, mas recomenda-se correção."
+            "\n**Ressalvas:** [listar]"
+            "\n"
+            "\nOU"
+            "\n"
+            "\n### ❌ REPROVADO - CORREÇÕES OBRIGATÓRIAS"
+            "\n**Justificativa:** Discrepâncias críticas impedem o registro."
+            "\n**Correções necessárias:** [listar]"
+            "\n"
+            "\n---"
+            "\n"
+            "\n**LEGENDA DE STATUS:**"
+            "\n- ✅ = Dados idênticos e corretos"
+            "\n- ⚠️ = Pequena diferença (revisar, mas não bloqueia)"
+            "\n- ❌ = Erro grave (correção obrigatória)"
+            "\n- N/A = Não encontrado/não aplicável"
+            "\n"
+            "\n---"
+            "\n*Relatório gerado por IA - Verificação humana sempre recomendada*"
+        )
+        
+        prompt.append(instrucoes_saida)
+        return prompt
+
+    def _normalizar_coordenada(self, coord: str) -> str:
         """
-        Extrai apenas o código HTML da resposta da IA, removendo texto extra.
+        Normaliza coordenadas para comparação, ignorando diferenças de formato.
+        Remove "-" do INCRA e "W"/"S" do projeto para comparação equivalente.
+        Normaliza caracteres Unicode especiais (prime → aspas normais).
 
-        Args:
-            texto: Resposta completa da IA
-
-        Returns:
-            HTML limpo sem texto antes ou depois
+        Exemplos:
+        - INCRA: "-48°34'14,782"" → "48°34'14,782""
+        - PROJETO: "48°34′14,782" W" → "48°34'14,782""
         """
-        import re
+        if not coord:
+            return ""
 
-        # Remover blocos de código markdown se houver
-        texto = re.sub(r'```html\s*', '', texto)
-        texto = re.sub(r'```\s*', '', texto)
+        # Converter para string e remover espaços em branco
+        coord = str(coord).strip()
 
-        # Procurar pelo início do HTML de forma mais agressiva
-        inicio_html = texto.find('<!DOCTYPE html>')
-        if inicio_html == -1:
-            inicio_html = texto.find('<!DOCTYPE HTML>')
-        if inicio_html == -1:
-            inicio_html = texto.find('<html')
-        if inicio_html == -1:
-            inicio_html = texto.find('<HTML')
+        # Normalizar caracteres Unicode especiais
+        # ′ (U+2032 prime) → ' (aspas simples)
+        # ″ (U+2033 double prime) → " (aspas duplas)
+        coord = coord.replace("′", "'").replace("″", '"')
 
-        # Procurar pelo fim do HTML
-        fim_html = texto.rfind('</html>')
-        if fim_html == -1:
-            fim_html = texto.rfind('</HTML>')
+        # Remover "-" do início (INCRA)
+        if coord.startswith("-"):
+            coord = coord[1:].strip()
 
-        if inicio_html != -1 and fim_html != -1:
-            # Extrair apenas o HTML, cortando TODO o texto antes e depois
-            html_puro = texto[inicio_html:fim_html + 7]  # +7 para incluir </html>
+        # Remover " W" ou " S" do final (PROJETO)
+        coord = coord.replace(" W", "").replace(" S", "").strip()
 
-            # Limpar qualquer texto que ainda esteja antes do DOCTYPE
-            # (remover linhas antes que não sejam HTML)
-            linhas = html_puro.split('\n')
-            primeira_linha_html = 0
-            for i, linha in enumerate(linhas):
-                if '<!DOCTYPE' in linha or '<html' in linha or '<HTML' in linha:
-                    primeira_linha_html = i
-                    break
+        # Remover aspas e espaços extras
+        coord = coord.strip().strip('"').strip("'").strip()
 
-            html_puro = '\n'.join(linhas[primeira_linha_html:])
-            return html_puro
-        else:
-            # Se não encontrar marcadores HTML, retornar o texto original
-            return texto
+        return coord
 
-    def _executar_analise_gemini(self):
+    def _limpar_string(self, valor) -> str:
         """
-        Executa a análise completa usando a API do Gemini.
+        Limpa qualquer valor convertendo para string e removendo espaços em branco.
+        Remove também caracteres invisíveis que podem causar diferenças falsas.
+        Converte pontos decimais em vírgulas para padronização numérica brasileira.
+        """
+        if valor is None:
+            return ""
+
+        # Converter para string e aplicar strip múltiplas vezes
+        valor_limpo = str(valor).strip()
+
+        # Remover espaços duplos internos
+        while "  " in valor_limpo:
+            valor_limpo = valor_limpo.replace("  ", " ")
+
+        # Converter ponto decimal para vírgula (padrão brasileiro)
+        valor_limpo = valor_limpo.replace(".", ",")
+
+        return valor_limpo
+
+    def _construir_relatorio_comparacao(self, incluir_projeto: bool, incluir_memorial: bool) -> str:
+        """
+        Constrói relatório HTML comparando dados estruturados (nova versão V3).
+        Compara dados extraídos dos Excel em vez de fazer OCR em tempo real.
+        """
+        html = []
+
+        # Cabeçalho HTML
+        html.append("""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Conferência - Georreferenciamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+        .info-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .identico {
+            background-color: #d4edda !important;
+        }
+        .diferente {
+            background-color: #f8d7da !important;
+        }
+        .status-ok {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-erro {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .resumo {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .resumo h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .destaque {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 RELATÓRIO DE CONFERÊNCIA DE GEORREFERENCIAMENTO</h1>
+        <p style="text-align: center; color: #7f8c8d;"><strong>Versão 3.0 - Comparação de Dados Estruturados (Excel)</strong></p>
+""")
+
+        # Seção INCRA vs Projeto
+        if incluir_projeto and self.projeto_data:
+            # Estatísticas
+            num_vertices_incra = len(self.incra_data['data'])
+            num_vertices_projeto = len(self.projeto_data['data'])
+
+            html.append(f"""
+        <div class="info-box">
+            <p><strong>📊 Estatísticas:</strong></p>
+            <ul>
+                <li>Total de vértices INCRA: <strong>{num_vertices_incra}</strong></li>
+                <li>Total de vértices PROJETO: <strong>{num_vertices_projeto}</strong></li>
+            </ul>
+        </div>
+
+        <h2>📐 COMPARAÇÃO: INCRA vs. PROJETO/PLANTA</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Vértice</th>
+                    <th style="width: 120px;">Campo</th>
+                    <th>INCRA</th>
+                    <th>PROJETO</th>
+                    <th style="width: 100px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+""")
+
+            # ===== SEÇÃO 1: COMPARAÇÃO DE VÉRTICE =====
+            max_rows = max(num_vertices_incra, num_vertices_projeto)
+            diferencas_vertice = 0
+            identicos_vertice = 0
+            diferencas_segmento = 0
+            identicos_segmento = 0
+
+            for i in range(max_rows):
+                incra_row = self.incra_data['data'][i] if i < num_vertices_incra else None
+                projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
+
+                if incra_row and projeto_row:
+                    # Extrair e limpar dados VÉRTICE (colunas 0-3)
+                    codigo_incra = self._limpar_string(incra_row[0] if len(incra_row) > 0 else "")
+                    codigo_projeto = self._limpar_string(projeto_row[0] if len(projeto_row) > 0 else "")
+
+                    long_incra = self._limpar_string(incra_row[1] if len(incra_row) > 1 else "")
+                    long_projeto = self._limpar_string(projeto_row[1] if len(projeto_row) > 1 else "")
+
+                    lat_incra = self._limpar_string(incra_row[2] if len(incra_row) > 2 else "")
+                    lat_projeto = self._limpar_string(projeto_row[2] if len(projeto_row) > 2 else "")
+
+                    alt_incra = self._limpar_string(incra_row[3] if len(incra_row) > 3 else "")
+                    alt_projeto = self._limpar_string(projeto_row[3] if len(projeto_row) > 3 else "")
+
+                    # Normalizar coordenadas para comparação
+                    long_incra_norm = self._normalizar_coordenada(long_incra)
+                    long_projeto_norm = self._normalizar_coordenada(long_projeto)
+
+                    lat_incra_norm = self._normalizar_coordenada(lat_incra)
+                    lat_projeto_norm = self._normalizar_coordenada(lat_projeto)
+
+                    # Verificar se VÉRTICE é idêntico (comparando strings limpas)
+                    vertice_identico = (codigo_incra == codigo_projeto and
+                                       long_incra_norm == long_projeto_norm and
+                                       lat_incra_norm == lat_projeto_norm and
+                                       alt_incra == alt_projeto)
+
+                    if vertice_identico:
+                        status_class_vertice = "identico"
+                        status_texto_vertice = '<span class="status-ok">✅ IDÊNTICO</span>'
+                        identicos_vertice += 1
+                    else:
+                        status_class_vertice = "diferente"
+                        status_texto_vertice = '<span class="status-erro">❌ DIFERENTE</span>'
+                        diferencas_vertice += 1
+
+                    # Adicionar linhas VÉRTICE na tabela
+                    html.append(f"""
+                <tr class="{status_class_vertice}">
+                    <td rowspan="4" style="text-align: center; vertical-align: middle; font-weight: bold;">#{i+1}</td>
+                    <td><strong>Código</strong></td>
+                    <td>{codigo_incra}</td>
+                    <td>{codigo_projeto}</td>
+                    <td rowspan="4" style="text-align: center; vertical-align: middle;">{status_texto_vertice}</td>
+                </tr>
+                <tr class="{status_class_vertice}">
+                    <td><strong>Longitude</strong></td>
+                    <td>{long_incra}</td>
+                    <td>{long_projeto}</td>
+                </tr>
+                <tr class="{status_class_vertice}">
+                    <td><strong>Latitude</strong></td>
+                    <td>{lat_incra}</td>
+                    <td>{lat_projeto}</td>
+                </tr>
+                <tr class="{status_class_vertice}">
+                    <td><strong>Altitude</strong></td>
+                    <td>{alt_incra}</td>
+                    <td>{alt_projeto}</td>
+                </tr>
+""")
+
+                elif incra_row and not projeto_row:
+                    diferencas_vertice += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ AUSENTE NO PROJETO</strong> - Código INCRA: {incra_row[0]}</td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+                elif not incra_row and projeto_row:
+                    diferencas_vertice += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ EXTRA NO PROJETO</strong> (não existe no INCRA) - Código: {projeto_row[0]}</td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+            html.append("""
+            </tbody>
+        </table>
+""")
+
+            # ===== SEÇÃO 2: COMPARAÇÃO DE SEGMENTO VANTE =====
+            html.append("""
+        <h2>🔄 COMPARAÇÃO: SEGMENTO VANTE</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Vértice</th>
+                    <th style="width: 120px;">Campo</th>
+                    <th>INCRA</th>
+                    <th>PROJETO</th>
+                    <th style="width: 100px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+""")
+
+            for i in range(max_rows):
+                incra_row = self.incra_data['data'][i] if i < num_vertices_incra else None
+                projeto_row = self.projeto_data['data'][i] if i < num_vertices_projeto else None
+
+                if incra_row and projeto_row:
+                    # Extrair e limpar dados SEGMENTO VANTE (colunas 4-6)
+                    cod_seg_incra = self._limpar_string(incra_row[4] if len(incra_row) > 4 else "")
+                    cod_seg_projeto = self._limpar_string(projeto_row[4] if len(projeto_row) > 4 else "")
+
+                    azim_incra = self._limpar_string(incra_row[5] if len(incra_row) > 5 else "")
+                    azim_projeto = self._limpar_string(projeto_row[5] if len(projeto_row) > 5 else "")
+
+                    dist_incra = self._limpar_string(incra_row[6] if len(incra_row) > 6 else "")
+                    dist_projeto = self._limpar_string(projeto_row[6] if len(projeto_row) > 6 else "")
+
+                    # Verificar se SEGMENTO VANTE é idêntico (comparando strings limpas)
+                    segmento_identico = (cod_seg_incra == cod_seg_projeto and
+                                        azim_incra == azim_projeto and
+                                        dist_incra == dist_projeto)
+
+                    if segmento_identico:
+                        status_class_seg = "identico"
+                        status_texto_seg = '<span class="status-ok">✅ IDÊNTICO</span>'
+                        identicos_segmento += 1
+                    else:
+                        status_class_seg = "diferente"
+                        status_texto_seg = '<span class="status-erro">❌ DIFERENTE</span>'
+                        diferencas_segmento += 1
+
+                    # Adicionar linhas SEGMENTO VANTE na tabela
+                    html.append(f"""
+                <tr class="{status_class_seg}">
+                    <td rowspan="3" style="text-align: center; vertical-align: middle; font-weight: bold;">#{i+1}</td>
+                    <td><strong>Código</strong></td>
+                    <td>{cod_seg_incra}</td>
+                    <td>{cod_seg_projeto}</td>
+                    <td rowspan="3" style="text-align: center; vertical-align: middle;">{status_texto_seg}</td>
+                </tr>
+                <tr class="{status_class_seg}">
+                    <td><strong>Azimute</strong></td>
+                    <td>{azim_incra}</td>
+                    <td>{azim_projeto}</td>
+                </tr>
+                <tr class="{status_class_seg}">
+                    <td><strong>Dist. (m)</strong></td>
+                    <td>{dist_incra}</td>
+                    <td>{dist_projeto}</td>
+                </tr>
+""")
+
+                elif incra_row and not projeto_row:
+                    diferencas_segmento += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ AUSENTE NO PROJETO</strong></td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+                elif not incra_row and projeto_row:
+                    diferencas_segmento += 1
+                    html.append(f"""
+                <tr class="diferente">
+                    <td style="text-align: center; font-weight: bold;">#{i+1}</td>
+                    <td colspan="3"><strong>❌ EXTRA NO PROJETO</strong></td>
+                    <td style="text-align: center;"><span class="status-erro">❌ ERRO</span></td>
+                </tr>
+""")
+
+            html.append("""
+            </tbody>
+        </table>
+""")
+
+            # Resumo geral
+            diferencas_total = diferencas_vertice + diferencas_segmento
+            identicos_total = identicos_vertice + identicos_segmento
+            resultado_final = "🎉 TODOS OS DADOS ESTÃO IDÊNTICOS!" if diferencas_total == 0 else "⚠️ EXISTEM DIFERENÇAS ENTRE OS DOCUMENTOS"
+            resultado_cor = "#28a745" if diferencas_total == 0 else "#dc3545"
+
+            html.append(f"""
+        <div class="resumo">
+            <h3>📊 RESUMO DA COMPARAÇÃO</h3>
+            <p class="destaque">Total de vértices analisados: {max_rows}</p>
+
+            <h4 style="margin-top: 20px; color: #2c3e50;">📍 VÉRTICE (Código, Longitude, Latitude, Altitude):</h4>
+            <p>✅ Idênticos: <strong style="color: #28a745;">{identicos_vertice}</strong></p>
+            <p>❌ Diferentes: <strong style="color: #dc3545;">{diferencas_vertice}</strong></p>
+
+            <h4 style="margin-top: 20px; color: #2c3e50;">🔄 SEGMENTO VANTE (Código, Azimute, Distância):</h4>
+            <p>✅ Idênticos: <strong style="color: #28a745;">{identicos_segmento}</strong></p>
+            <p>❌ Diferentes: <strong style="color: #dc3545;">{diferencas_segmento}</strong></p>
+
+            <hr style="margin: 20px 0;">
+
+            <h4 style="color: #2c3e50;">🎯 TOTAL GERAL:</h4>
+            <p>✅ Total idênticos: <strong style="color: #28a745;">{identicos_total}</strong></p>
+            <p>❌ Total diferentes: <strong style="color: #dc3545;">{diferencas_total}</strong></p>
+
+            <hr style="margin: 20px 0;">
+            <p class="destaque" style="color: {resultado_cor}; font-size: 1.2em;">{resultado_final}</p>
+            {f'<p style="color: #856404;">Por favor, revise os itens marcados como DIFERENTE nas tabelas acima.</p>' if diferencas_total > 0 else ''}
+        </div>
+""")
+
+        # Informações do processo
+        html.append(f"""
+        <div class="info-box">
+            <h3>📁 INFORMAÇÕES DO PROCESSO</h3>
+            <p><strong>Arquivos Excel gerados para auditoria:</strong></p>
+            <ul>
+                <li>INCRA: <code>{self.incra_excel_path}</code></li>
+                <li>PROJETO: <code>{self.projeto_excel_path}</code></li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; color: #7f8c8d; margin-top: 40px;">
+            <em>Relatório gerado automaticamente - Versão 3.0</em>
+        </p>
+    </div>
+</body>
+</html>
+""")
+
+        return "".join(html)
+
+    def _executar_analise_gemini(self, incluir_projeto: bool = False, incluir_memorial: bool = False):
+        """
+        Executa a análise completa usando extração para Excel + comparação.
+        Nova versão V3: Extrai PDFs para Excel primeiro, depois compara dados estruturados.
         Deve ser executado em thread separada para não travar a GUI.
         """
         try:
             # Limpar área de resultados
             self.resultado_text.delete(1.0, tk.END)
-            self.resultado_text.insert(tk.END, "🔄 Processando documentos...\n\n")
+            self.resultado_text.insert(tk.END, "🔄 Processando documentos com NOVA ABORDAGEM V3...\n\n")
+            self.resultado_text.insert(tk.END, "📊 Fluxo: PDF → Extração para Excel → Comparação de dados estruturados\n\n")
+            self.resultado_text.insert(tk.END, "="*80 + "\n\n")
 
-            # Carregar INCRA (com rotação)
-            self._atualizar_status("Carregando INCRA...")
-            self.incra_images = self._carregar_pdf_como_imagens(
-                self.incra_path.get(),
-                rotacionar_90=True
-            )
-            self.resultado_text.insert(
-                tk.END,
-                f"✅ INCRA carregado: {len(self.incra_images)} página(s)\n"
-            )
-
-            # Carregar Projeto
-            self._atualizar_status("Carregando Projeto/Planta...")
-            self.projeto_images = self._carregar_pdf_como_imagens(
-                self.projeto_path.get()
-            )
-            self.resultado_text.insert(
-                tk.END,
-                f"✅ Projeto carregado: {len(self.projeto_images)} página(s)\n"
-            )
-
-            self.resultado_text.insert(tk.END, "\n" + "="*80 + "\n\n")
-
-            # Configurar API do Gemini
-            self._atualizar_status("Configurando API do Gemini...")
-            genai.configure(api_key=self.api_key.get().strip())
-
-            # Usar modelo Gemini 2.5 Flash Lite conforme especificado
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
-
-            # Construir prompt
-            self._atualizar_status("Construindo análise multimodal...")
-            prompt = self._construir_prompt_gemini()
-            
-            # Executar análise
-            self._atualizar_status("Analisando documentos com IA... (pode levar alguns minutos)")
-            self.resultado_text.insert(tk.END, "🤖 Gemini AI analisando os documentos...\n\n")
+            # ===== ETAPA 1: EXTRAIR INCRA PARA EXCEL =====
+            self._atualizar_status("Extraindo tabela do INCRA para Excel...")
+            self.resultado_text.insert(tk.END, "🔄 [1/2] Extraindo INCRA para Excel...\n")
+            self.resultado_text.insert(tk.END, f"    PDF: {self.incra_path.get()}\n")
             self.root.update_idletasks()
-            
-            response = model.generate_content(prompt)
 
-            # Limpar resposta - extrair apenas o HTML puro
-            html_limpo = self._extrair_html_puro(response.text)
+            try:
+                self.incra_excel_path, self.incra_data = self._extrair_pdf_para_excel(
+                    self.incra_path.get(),
+                    tipo="incra"
+                )
+                self.resultado_text.insert(
+                    tk.END,
+                    f"✅ INCRA extraído com sucesso!\n"
+                    f"    Vértices: {len(self.incra_data['data'])}\n"
+                    f"    Excel: {self.incra_excel_path}\n\n"
+                )
+                self.root.update_idletasks()
+            except Exception as e:
+                raise RuntimeError(f"Erro ao extrair INCRA: {str(e)}") from e
 
-            # Exibir resultado
-            self.resultado_text.insert(tk.END, html_limpo)
+            # ===== ETAPA 2: EXTRAIR PROJETO PARA EXCEL =====
+            self._atualizar_status("Extraindo tabela do Projeto para Excel...")
+            self.resultado_text.insert(tk.END, "🔄 [2/2] Extraindo Projeto para Excel...\n")
+            self.resultado_text.insert(tk.END, f"    PDF: {self.projeto_path.get()}\n")
+            self.root.update_idletasks()
 
-            # Salvar HTML para poder exportar depois
-            self.ultimo_relatorio_html = html_limpo
-            
+            try:
+                self.projeto_excel_path, self.projeto_data = self._extrair_pdf_para_excel(
+                    self.projeto_path.get(),
+                    tipo="normal"
+                )
+                self.resultado_text.insert(
+                    tk.END,
+                    f"✅ Projeto extraído com sucesso!\n"
+                    f"    Vértices: {len(self.projeto_data['data'])}\n"
+                    f"    Excel: {self.projeto_excel_path}\n\n"
+                )
+                self.root.update_idletasks()
+            except Exception as e:
+                raise RuntimeError(f"Erro ao extrair PROJETO: {str(e)}") from e
+
+            self.resultado_text.insert(tk.END, "="*80 + "\n\n")
+
+            # ===== ETAPA 3: COMPARAR DADOS ESTRUTURADOS =====
+            self._atualizar_status("Comparando dados estruturados...")
+            self.resultado_text.insert(tk.END, "🔄 Comparando dados estruturados...\n\n")
+            self.root.update_idletasks()
+
+            # Construir relatório de comparação HTML
+            relatorio_html = self._construir_relatorio_comparacao(True, False)
+
+            # Salvar HTML automaticamente
+            output_dir = Path(tempfile.gettempdir()) / "conferencia_geo"
+            output_dir.mkdir(exist_ok=True)
+            html_path = output_dir / "relatorio_comparacao.html"
+
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(relatorio_html)
+
+            # Salvar HTML para exportação futura
+            self.ultimo_relatorio_html = relatorio_html
+
+            # Exibir resumo no ScrolledText
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
+            self.resultado_text.insert(tk.END, "✅ ANÁLISE CONCLUÍDA COM SUCESSO!\n")
+            self.resultado_text.insert(tk.END, "="*80 + "\n\n")
+
+            # Contar diferenças para o resumo
+            num_vertices = len(self.incra_data['data'])
+            self.resultado_text.insert(tk.END, f"📊 Total de vértices analisados: {num_vertices}\n\n")
+
+            self.resultado_text.insert(tk.END, "📁 ARQUIVOS GERADOS:\n")
+            self.resultado_text.insert(tk.END, f"   • INCRA (Excel): {self.incra_excel_path}\n")
+            self.resultado_text.insert(tk.END, f"   • PROJETO (Excel): {self.projeto_excel_path}\n")
+            self.resultado_text.insert(tk.END, f"   • RELATÓRIO (HTML): {html_path}\n\n")
+
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
+            self.resultado_text.insert(tk.END, "🌐 O relatório HTML foi aberto automaticamente no navegador!\n")
+            self.resultado_text.insert(tk.END, "="*80 + "\n")
+
             # Habilitar botão de salvar
             self.btn_salvar_html.config(state='normal')
-            
+
             self._atualizar_status("✅ Análise concluída!")
-            
-            messagebox.showinfo("Sucesso", "Análise concluída com sucesso!\n\nVocê pode salvar o relatório em HTML clicando no botão abaixo.")
-            
+
+            # Abrir HTML no navegador automaticamente
+            import webbrowser
+            webbrowser.open(f'file://{html_path}')
+
+            messagebox.showinfo("Sucesso",
+                              f"Análise concluída com sucesso!\n\n"
+                              f"✅ Dados extraídos para Excel\n"
+                              f"✅ Comparação estruturada realizada\n"
+                              f"✅ Relatório HTML aberto no navegador\n\n"
+                              f"Arquivo: {html_path}")
+
         except Exception as e:
-            erro_msg = f"❌ ERRO: {str(e)}"
-            self.resultado_text.insert(tk.END, f"\n\n{erro_msg}\n")
-            self._atualizar_status("Erro na análise")
-            messagebox.showerror("Erro", f"Ocorreu um erro durante a análise:\n\n{str(e)}")
-            
+            import traceback
+            import sys
+
+            # Capturar traceback completo
+            tb_str = traceback.format_exc()
+
+            # Mostrar erro detalhado na GUI
+            erro_msg = f"\n\n{'='*80}\n❌ ERRO DURANTE A ANÁLISE\n{'='*80}\n\n"
+            erro_msg += f"Tipo: {type(e).__name__}\n"
+            erro_msg += f"Mensagem: {str(e)}\n\n"
+            erro_msg += "Detalhes técnicos:\n"
+            erro_msg += "-" * 80 + "\n"
+            erro_msg += tb_str
+            erro_msg += "-" * 80 + "\n\n"
+            erro_msg += "💡 Dicas para resolver:\n"
+            erro_msg += "- Verifique se os arquivos PDF estão acessíveis\n"
+            erro_msg += "- Verifique se você tem permissão para criar arquivos em:\n"
+            erro_msg += f"  {Path(tempfile.gettempdir()) / 'conferencia_geo'}\n"
+            erro_msg += "- Verifique sua conexão com a API do Gemini\n"
+            erro_msg += "- Tente fechar outros programas que possam estar usando os arquivos\n"
+
+            self.resultado_text.insert(tk.END, erro_msg)
+            self._atualizar_status("❌ Erro na análise")
+
+            # Mostrar erro em popup simplificado
+            messagebox.showerror("Erro na Análise",
+                               f"Ocorreu um erro durante a análise:\n\n"
+                               f"{type(e).__name__}: {str(e)}\n\n"
+                               f"Veja detalhes completos na área de resultados.")
+
+            # Também imprimir no console para debug
+            print(erro_msg, file=sys.stderr)
+
         finally:
             self._habilitar_botoes()
-            
-    def _comparar_documentos(self):
+
+    def _comparar_projeto(self):
         """Compara INCRA vs. Projeto."""
         if not self._validar_entrada():
             return
@@ -1613,54 +2023,63 @@ class VerificadorGeorreferenciamento:
         self._desabilitar_botoes()
 
         # Executar em thread separada para não travar a GUI
-        thread = threading.Thread(target=self._executar_analise_gemini)
+        thread = threading.Thread(target=self._executar_analise_gemini, args=(True, False))
         thread.daemon = True
         thread.start()
 
 
 class JanelaComparacaoManual:
     """Janela para comparação visual manual dos documentos PDF."""
-
-    def __init__(self, parent, incra_path, projeto_path):
+    
+    def __init__(self, parent, incra_path, memorial_path, projeto_path=None):
         self.janela = tk.Toplevel(parent)
         self.janela.title("Comparação Visual Manual - Georreferenciamento")
-        self.janela.geometry("1400x900")
+        self.janela.geometry("1600x900")
         self.janela.configure(bg='#2c3e50')
-
+        
         # Caminhos dos arquivos
         self.incra_path = incra_path
+        self.memorial_path = memorial_path
         self.projeto_path = projeto_path
-
+        
         # Listas de imagens carregadas
         self.incra_images = []
+        self.memorial_images = []
         self.projeto_images = []
-
+        
         # Índices de página atual
         self.incra_pagina = 0
+        self.memorial_pagina = 0
         self.projeto_pagina = 0
-
+        
         # Níveis de zoom (100% = 1.0)
         self.incra_zoom = 1.0
+        self.memorial_zoom = 1.0
         self.projeto_zoom = 1.0
-
+        
         # Ângulo de rotação (0, 90, 180, 270)
         self.incra_rotacao = 0
+        self.memorial_rotacao = 0
         self.projeto_rotacao = 0
-
+        
         # Posição do canvas (para arrastar)
         self.incra_pos_x = 0
         self.incra_pos_y = 0
+        self.memorial_pos_x = 0
+        self.memorial_pos_y = 0
         self.projeto_pos_x = 0
         self.projeto_pos_y = 0
-
+        
         # Controle de arrastar
         self.incra_drag_start = None
+        self.memorial_drag_start = None
         self.projeto_drag_start = None
-
+        
         # Imagens PhotoImage (para exibição no Tkinter)
         self.incra_photo = None
+        self.memorial_photo = None
         self.projeto_photo = None
-
+        
         self._criar_interface()
         self._carregar_documentos()
         
@@ -1921,11 +2340,17 @@ class JanelaComparacaoManual:
             self.incra_images = convert_from_path(self.incra_path, dpi=150)
             # Rotacionar INCRA
             self.incra_images = [img.rotate(-90, expand=True) for img in self.incra_images]
-
-            # Carregar Projeto
-            status_label.config(text="Carregando Projeto...")
+            
+            # Carregar Memorial
+            status_label.config(text="Carregando Memorial...")
             progress.update()
-            self.projeto_images = convert_from_path(self.projeto_path, dpi=150)
+            self.memorial_images = convert_from_path(self.memorial_path, dpi=150)
+            
+            # Carregar Projeto se houver
+            if self.projeto_path:
+                status_label.config(text="Carregando Projeto...")
+                progress.update()
+                self.projeto_images = convert_from_path(self.projeto_path, dpi=150)
             
             progress.destroy()
             
